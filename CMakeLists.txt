@@ -108,7 +108,7 @@ endif(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set( Boost_USE_STATIC_LIBS ON )
 
-find_package( Boost REQUIRED COMPONENTS thread system filesystem )
+find_package( Boost )
 
 MESSAGE( STATUS "found boost:"
   "\nINCLUDE: ${Boost_INCLUDE_DIRS}"

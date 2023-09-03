@@ -3,6 +3,24 @@ project(simcancerphylo)
 
 set( CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR} ${CMAKE_MODULE_PATH} )
 
+set(visualizephylo_src
+    src/arg_parser.cpp
+    src/visualizephylomain.cpp
+    src/basetree.cpp
+    src/cnatree.cpp
+    src/genotypetree.cpp
+    src/utils.cpp
+    src/phylogeny.cpp
+)
+
+set(visualizephylo_hdr
+    src/basetree.h
+    src/cnatree.h
+    src/genotypetree.h
+    src/utils.h
+    src/phylogeny.h
+)
+
 set( mergegenotypetrees_src
     src/mergegenotypetreesmain.cpp
   src/basetree.cpp
@@ -137,3 +155,6 @@ target_link_libraries( generatecnatrees ${CommonLibs} )
 
 add_executable( simulate ${simulate_src} ${simulate_hdr} )
 target_link_libraries( simulate ${CommonLibs} )
+
+add_executable( visualizephylo ${visualizephylo_src} ${visualizephylo_hdr} )
+target_link_libraries( visualizephylo ${CommonLibs} )

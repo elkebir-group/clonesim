@@ -5,6 +5,7 @@
 #include "phylogeny.h"
 #include <algorithm>
 #include <lemon/connectivity.h>
+#include "beta_distribution.hpp"
 
 Phylogeny::Phylogeny()
   : _T()
@@ -23,8 +24,53 @@ Phylogeny::Phylogeny()
   , _mutToSegment()
   , _segmentToMut()
   , _D(_T)
+  , _clusterD()
+  , _proportions(_T)
 {
   _trunk[_root] = false;
+}
+
+Phylogeny::Phylogeny(const Phylogeny& other)
+  : _T()
+  , _root(lemon::INVALID)
+  , _mrca(lemon::INVALID)
+  , _trunk(_T)
+  , _cnaTrees(other._cnaTrees)
+  , _charState(_T)
+  , _trunkLength(other._trunkLength)
+  , _mutToCluster(other._mutToCluster)
+  , _clusterToMut(other._clusterToMut)
+  , _xbar(_T)
+  , _ybar(_T)
+  , _clusterToNode()
+  , _nodeToCluster(_T)
+  , _mutToSegment(other._mutToSegment)
+  , _segmentToMut(other._segmentToMut)
+  , _D(_T)
+  , _clusterD()
+  , _proportions(_T)
+{
+  lemon::digraphCopy(other._T, _T)
+  .node(other._root, _root)
+  .node(other._mrca, _mrca)
+  .nodeMap(other._trunk, _trunk)
+  .nodeMap(other._charState, _charState)
+  .nodeMap(other._xbar, _xbar)
+  .nodeMap(other._ybar, _ybar)
+  .nodeMap(other._nodeToCluster, _nodeToCluster)
+  .nodeMap(other._proportions, _proportions)
+  .run();
+
+  // update _clusterToNode
+  _clusterToNode = NodeVector(_clusterToMut.size(), lemon::INVALID);
+  for (NodeIt v(_T); v != lemon::INVALID; ++v)
+  {
+    _clusterToNode[_nodeToCluster[v]] = v;
+  }
+
+  initD(_root);
+  _clusterD = NodeMatrix(_clusterToNode.size());
+  initClusterD(_mrca, 0);
 }
 
 void Phylogeny::addSegment(const CnaTree& cnaTree, bool truncal)
@@ -346,6 +392,12 @@ void Phylogeny::writeDOT(std::ostream& out) const
     {
       out << "\\ncluster " << _nodeToCluster[v];
     }
+    out << "\\n[";
+    for (double prop : _proportions[v])
+    {
+      out << " " << prop;
+    }
+    out << " ]";
     out << "\"]" << std::endl;
   }
 
@@ -465,6 +517,9 @@ void Phylogeny::sampleMutations(int n, int l)
       sampleMutation(mutationNode, segmentIdx, mutIdx);
     }
   }
+
+  _clusterD = NodeMatrix (_clusterToMut.size());
+  initClusterD(_mrca, 0);
 }
 
 void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mutIdx)
@@ -585,6 +640,7 @@ void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mut
 
 void Phylogeny::initD(Node u)
 {
+  _D[u].clear();
   for (OutArcIt a(_T, u); a != lemon::INVALID; ++a)
   {
     Node v = _T.target(a);
@@ -592,4 +648,465 @@ void Phylogeny::initD(Node u)
     _D[u].insert(v);
     _D[u].insert(_D[v].begin(), _D[v].end());
   }
+}
+
+void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minProportion)
+{
+  const int nrClusters = _clusterToNode.size();
+
+  // make sure to sample mrca and descendants of every cluster
+  DoubleVector purityVector(nrSamples);
+
+  for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx)
+  {
+    double samplePurity = expPurity;
+    if (expPurity < 1.)
+    {
+      double alpha = expPurity * 100;
+      double beta = 100 - alpha;
+      sftrabbit::beta_distribution<> betaDist(alpha, beta);
+
+      purityVector[sampleIdx] = betaDist(g_rng);
+    }
+  }
+
+  // initialize proportions
+  for (NodeIt v(_T); v != lemon::INVALID; ++v)
+  {
+    _proportions[v] = DoubleVector(nrSamples, 0.);
+    if (v == _root)
+    {
+      for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx)
+      {
+        _proportions[v][sampleIdx] = 1. - purityVector[sampleIdx];
+      }
+    }
+  }
+
+  IntMatrix clusterToSample(nrClusters);
+  IntVector sampleVector(nrSamples);
+  for (int i = 0; i < nrSamples; ++i)
+  {
+    sampleVector[i] = i;
+  }
+
+  std::uniform_int_distribution<> unif_samples(1, nrSamples);
+
+  IntMatrix sampleToCluster(nrSamples);
+  for (int clusterIdx = 0; clusterIdx < nrClusters; ++clusterIdx)
+  {
+    std::shuffle(sampleVector.begin(), sampleVector.end(), g_rng);
+    int nr_picked_samples = unif_samples(g_rng);
+
+    clusterToSample[clusterIdx] = IntVector(sampleVector.begin(), sampleVector.begin() + nr_picked_samples);
+    for (int sample: clusterToSample[clusterIdx])
+    {
+      sampleToCluster[sample].push_back(clusterIdx);
+    }
+  }
+
+  std::gamma_distribution<> gamma_dist(1, 1);
+  for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx)
+  {
+    double minSampleProportion = std::min(minProportion,
+                                          purityVector[sampleIdx] / sampleToCluster[sampleIdx].size());
+
+    DoubleVector gamma(sampleToCluster[sampleIdx].size());
+
+    bool ok = false;
+    double sum;
+    while (!ok)
+    {
+      ok = true;
+      sum = 0;
+      for (int cloneIdx = 0; cloneIdx < sampleToCluster[sampleIdx].size(); ++cloneIdx)
+      {
+        gamma[cloneIdx] = gamma_dist(g_rng);
+        sum += gamma[cloneIdx];
+      }
+
+      for (int cloneIdx = 0; cloneIdx < sampleToCluster[sampleIdx].size(); ++cloneIdx)
+      {
+        int clusterIdx = sampleToCluster[sampleIdx][cloneIdx];
+        double prop = gamma[cloneIdx] / sum * purityVector[sampleIdx];
+        if (prop < minSampleProportion) ok = false;
+      }
+    }
+
+    // set clone proportions
+    for (int cloneIdx = 0; cloneIdx < sampleToCluster[sampleIdx].size(); ++cloneIdx)
+    {
+      int clusterIdx = sampleToCluster[sampleIdx][cloneIdx];
+      double prop = gamma[cloneIdx] / sum * purityVector[sampleIdx];
+
+      std::uniform_int_distribution<> unif_cluster(0, _clusterD[clusterIdx].size() - 1);
+      Node v = _clusterD[clusterIdx][unif_cluster(g_rng)];
+      _proportions[v][sampleIdx] = prop;
+    }
+  }
+}
+
+void Phylogeny::initClusterD(Node v, int clusterIdx)
+{
+  if (_nodeToCluster[v] != -1)
+  {
+    clusterIdx = _nodeToCluster[v];
+    _clusterD[clusterIdx].push_back(v);
+  }
+  else if (clusterIdx != -1)
+  {
+    _clusterD[clusterIdx].push_back(v);
+  }
+
+  for (OutArcIt a(_T, v); a != lemon::INVALID; ++a)
+  {
+    initClusterD(_T.target(a), clusterIdx);
+  }
+}
+
+std::ostream& operator<<(std::ostream& out, const Phylogeny& T)
+{
+  out << T._cnaTrees;
+  out << lemon::countNodes(T._T) << " # nodes" << std::endl;
+
+  IntNodeMap nodeId(T._T);
+  int index = 0;
+  for (NodeIt v(T._T); v != lemon::INVALID; ++v)
+  {
+    nodeId[v] = index++;
+  }
+
+  out << T._mutToCluster.size() << " #mutations" << std::endl;
+  out << T._proportions[T._root].size() << " #samples" << std::endl;
+
+  for (NodeIt v(T._T); v != lemon::INVALID; ++v)
+  {
+    out << nodeId[v] << " " << (T._root == v ? "1" : "0")
+        << " " << (T._mrca == v ? "1" : "0")
+        << " " << (T._trunk[v] ? "1" : "0");
+
+    for (int xbar : T._xbar[v])
+    {
+      out << " " << xbar;
+    }
+
+    for (int ybar : T._ybar[v])
+    {
+      out << " " << ybar;
+    }
+
+    for (int state : T._charState[v])
+    {
+      out << " " << state;
+    }
+    for (double prop : T._proportions[v])
+    {
+      out << " " << prop;
+    }
+    out << std::endl;
+  }
+
+  for (ArcIt a(T._T); a != lemon::INVALID; ++a)
+  {
+    out << nodeId[T._T.source(a)] << " " << nodeId[T._T.target(a)] << std::endl;
+  }
+
+  out << T._clusterToNode.size() << " # mutation clusters" << std::endl;
+  for (int clusterIdx = 0; clusterIdx < T._clusterToNode.size(); ++clusterIdx)
+  {
+    out << clusterIdx << " " << nodeId[T._clusterToNode[clusterIdx]];
+    for (int mutation : T._clusterToMut[clusterIdx])
+    {
+      out << " " << mutation;
+    }
+    out << std::endl;
+  }
+
+  out << T._segmentToMut.size() << " # segments" << std::endl;
+  for (int segmentIdx = 0; segmentIdx < T._segmentToMut.size(); ++segmentIdx)
+  {
+    out << segmentIdx;
+    for (int mutation : T._segmentToMut[segmentIdx])
+    {
+      out << " " << mutation;
+    }
+    out << std::endl;
+  }
+
+  return out;
+}
+
+std::istream& operator>>(std::istream& in, Phylogeny& T)
+{
+  in >> T._cnaTrees;
+
+  std::string line;
+  getline(in, line);
+  std::stringstream ss(line);
+
+  int nrNodes = -1;
+  ss >> nrNodes;
+  if (nrNodes < 0)
+  {
+    throw std::runtime_error("Expected nonnegative number of nodes");
+  }
+
+  int nrMutations = -1;
+  getline(in, line);
+  ss.clear();
+  ss.str(line);
+  ss >> nrMutations;
+  if (nrMutations < 0)
+  {
+    throw std::runtime_error("Expected nonnegative number of mutations");
+  }
+
+  int nrSamples = -1;
+  getline(in, line);
+  ss.clear();
+  ss.str(line);
+  ss >> nrSamples;
+  if (nrSamples < 0)
+  {
+    throw std::runtime_error("Expected nonnegative number of samples");
+  }
+
+  T._T.clear();
+  NodeVector indexToNode(nrNodes, lemon::INVALID);
+  for (int i = 0; i < nrNodes; ++i)
+  {
+    getline(in, line);
+    StringVector s;
+    boost::split(s, line, boost::is_any_of(" \t"));
+
+    if (s.size() != 1 + 3 + 2 * nrMutations + T._cnaTrees.size() + nrSamples)
+    {
+      throw std::runtime_error("Unexpected number of values");
+    }
+
+    int nodeIdx = boost::lexical_cast<int>(s[0]);
+    Node v = T._T.addNode();
+    indexToNode[nodeIdx] = v;
+    T._nodeToCluster[v] = -1;
+    if (boost::lexical_cast<int>(s[1]) == 1)
+    {
+      T._root = v;
+    }
+    if (boost::lexical_cast<int>(s[2]) == 1)
+    {
+      T._mrca = v;
+    }
+    T._trunk[v] = boost::lexical_cast<int>(s[3]) == 1;
+
+    int offset = 4;
+    T._xbar[v] = IntVector(nrMutations, -1);
+    for (int mutationIdx = 0; mutationIdx < nrMutations; ++mutationIdx)
+    {
+      int xbar = boost::lexical_cast<int>(s[offset + mutationIdx]);
+      T._xbar[v][mutationIdx] = xbar;
+    }
+
+    offset += nrMutations;
+    T._ybar[v] = IntVector(nrMutations, -1);
+    for (int mutationIdx = 0; mutationIdx < nrMutations; ++mutationIdx)
+    {
+      int ybar = boost::lexical_cast<int>(s[offset + mutationIdx]);
+      T._ybar[v][mutationIdx] = ybar;
+    }
+
+    offset += nrMutations;
+
+    T._charState[v] = IntVector(T._cnaTrees.size(), -1);
+    for (int segmentIdx = 0; segmentIdx < T._cnaTrees.size(); ++segmentIdx)
+    {
+      int state = boost::lexical_cast<int>(s[offset + segmentIdx]);
+      if (!(0 <= state && state < T._cnaTrees[segmentIdx].k()))
+      {
+        throw std::runtime_error("Unexpected state");
+      }
+
+      T._charState[v][segmentIdx] = state;
+    }
+
+    offset += T._cnaTrees.size();
+
+    T._proportions[v] = DoubleVector(nrSamples, 0);
+    for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx)
+    {
+      T._proportions[v][sampleIdx] = boost::lexical_cast<double>(s[offset + sampleIdx]);
+    }
+  }
+
+  for (int i = 0; i < nrNodes - 1; ++i)
+  {
+    int sourceIdx = -1;
+    int targetIdx = -1;
+    getline(in, line);
+    ss.clear();
+    ss.str(line);
+    ss >> sourceIdx >> targetIdx;
+
+    if (!(0 <= sourceIdx && sourceIdx < nrNodes))
+    {
+      throw std::runtime_error("Invalid edge");
+    }
+
+    if (!(0 <= targetIdx && targetIdx < nrNodes))
+    {
+      throw std::runtime_error("Invalid edge");
+    }
+
+    T._T.addArc(indexToNode[sourceIdx], indexToNode[targetIdx]);
+  }
+
+  int nrClusters = -1;
+  getline(in, line);
+  ss.clear();
+  ss.str(line);
+  ss >> nrClusters;
+
+  if (nrClusters < 0)
+  {
+    throw std::runtime_error("Invalid number of mutation clusters");
+  }
+
+  T._clusterToMut = IntSetVector(nrClusters);
+  T._mutToCluster = IntVector(nrMutations);
+  T._clusterToNode = NodeVector(nrClusters);
+  for (int clusterIdx = 0; clusterIdx < nrClusters; ++clusterIdx)
+  {
+    getline(in, line);
+    StringVector s;
+    boost::split(s, line, boost::is_any_of(" \t"));
+
+    if (s.size() < 2)
+    {
+      throw std::runtime_error("Expected at least two values");
+    }
+
+    if (boost::lexical_cast<int>(s[0]) != clusterIdx)
+    {
+      throw std::runtime_error("Unexpected cluster index");
+    }
+
+    int nodeIndex = boost::lexical_cast<int>(s[1]);
+
+    if (!(0 <= nodeIndex && nodeIndex < indexToNode.size()))
+    {
+      throw std::runtime_error("Unexpected node index");
+    }
+
+    T._clusterToNode[clusterIdx] = indexToNode[nodeIndex];
+    T._nodeToCluster[indexToNode[nodeIndex]] = clusterIdx;
+
+    for (int i = 2; i < s.size(); ++i)
+    {
+      int mut = boost::lexical_cast<int>(s[i]);
+      T._clusterToMut[clusterIdx].insert(mut);
+      T._mutToCluster[mut] = clusterIdx;
+    }
+  }
+
+  int nrSegments = -1;
+  getline(in, line);
+  ss.clear();
+  ss.str(line);
+  ss >> nrSegments;
+
+  if (nrSegments != T._cnaTrees.size())
+  {
+    throw std::runtime_error("Invalid number of segments");
+  }
+
+  T._segmentToMut = IntSetVector(nrSegments);
+  T._mutToSegment = IntVector(nrMutations);
+
+  for (int segmentIdx = 0; segmentIdx < nrSegments; ++segmentIdx)
+  {
+    getline(in, line);
+    StringVector s;
+    boost::split(s, line, boost::is_any_of(" \t"));
+
+    if (s.size() < 1)
+    {
+      throw std::runtime_error("Expected at least one value");
+    }
+
+    if (boost::lexical_cast<int>(s[0]) != segmentIdx)
+    {
+      throw std::runtime_error("Unexpected segment index");
+    }
+
+    for (int i = 1; i < s.size(); ++i)
+    {
+      int mut = boost::lexical_cast<int>(s[i]);
+      T._segmentToMut[segmentIdx].insert(mut);
+      T._mutToSegment[mut] = segmentIdx;
+    }
+  }
+
+  return in;
+}
+
+Phylogeny Phylogeny::removeUnsampledNodes() const
+{
+  Phylogeny newPhylo(*this);
+
+  BoolNodeMap sampled(newPhylo._T, false);
+  NodeSet unsampledNodes;
+  for (NodeIt v(newPhylo._T); v != lemon::INVALID; ++v)
+  {
+    bool sampled_v = false;
+    for (double prop : newPhylo._proportions[v])
+    {
+      sampled_v |= prop > 0.;
+    }
+    sampled[v] = sampled_v;
+    if (!sampled_v)
+    {
+      unsampledNodes.insert(v);
+    }
+  }
+
+  while (true)
+  {
+    Node toRemove = lemon::INVALID;
+    int outDeg = -1;
+    for (Node v : unsampledNodes)
+    {
+      outDeg = lemon::countOutArcs(newPhylo._T, v);
+      if (outDeg <= 1)
+      {
+        toRemove = v;
+        break;
+      }
+    }
+
+    if (toRemove == lemon::INVALID) break;
+    assert(toRemove != newPhylo._root);
+    Node parent =  newPhylo._T.source(InArcIt(newPhylo._T, toRemove));
+    Node child = lemon::INVALID;
+    if (outDeg == 1)
+    {
+      child = newPhylo._T.target(OutArcIt(newPhylo._T, toRemove));
+      newPhylo._T.addArc(parent, child);
+    }
+    if (newPhylo._trunk[toRemove])
+    {
+      newPhylo._trunkLength--;
+    }
+    if (toRemove == newPhylo._mrca)
+    {
+      assert(outDeg == 1);
+      newPhylo._mrca = child;
+    }
+    unsampledNodes.erase(toRemove);
+    newPhylo._T.erase(toRemove);
+  }
+
+  newPhylo.initD(newPhylo._root);
+  newPhylo._clusterD = NodeMatrix(newPhylo._clusterToNode.size());
+  newPhylo.initClusterD(newPhylo._mrca, 0);
+
+  return newPhylo;
 }

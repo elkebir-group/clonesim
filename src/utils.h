@@ -30,6 +30,7 @@ typedef Digraph::NodeMap<std::string> StringNodeMap;
 typedef std::map<std::string, Node> StringToNodeMap;
 typedef std::map<std::string, int> StringToIntMap;
 typedef std::set<Node> NodeSet;
+typedef std::vector<NodeSet> NodeSetVector;
 typedef std::set<Arc> ArcSet;
 typedef std::vector<Arc> ArcVector;
 typedef Digraph::NodeMap<NodeSet> NodeNodeSetMap;

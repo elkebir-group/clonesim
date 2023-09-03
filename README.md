@@ -13,6 +13,22 @@ make
 
 ```
 ./generatecnatrees > cnatrees.txt
-./simulate -S cnatrees.txt > T.dot
+./simulate -S cnatrees.txt -dot T.dot > T.txt
 dot -Tpdf T.dot > T.pdf
 ```
+
+T.txt contains a text representantation of the simulated clonal tree. This can be visualized using:
+
+```
+./visualizephylo T.txt | dot -Tpdf > T.pdf
+```
+
+To remove unsampled nodes, use `-r` in `simulate`:
+
+
+```
+./simulate -r -n 50 -S cnatrees.txt -dot T.dot > T.txt
+dot -Tpdf T.dot > T.pdf
+```
+
+

@@ -22,6 +22,8 @@ int main(int argc, char** argv)
   int l = 5;
   int seed = 0;
   std::string inputStateTreeFilename;
+  std::string outputTreeFilename = "";
+  std::string outputNodeFilename = "";
 
   lemon2::ArgParser ap(argc, argv);
   ap.refOption("S", "Input CNA tree file", inputStateTreeFilename, true)
@@ -30,7 +32,9 @@ int main(int argc, char** argv)
     .refOption("n", "Number of SNVs (default: 1000)", n, false)
     .refOption("m", "Number of samples (default: 2)", m, false)
     .refOption("k", "Number of segments (default: 10)", k, false)
-    .refOption("l", "Number of mutation clusters (default: 5)", l, false);
+    .refOption("l", "Number of mutation clusters (default: 5)", l, false)
+    .refOption("STree", "Output filename for tree (default: none)", outputTreeFilename, false)
+    .refOption("SNode", "Output filename for csv with information about nodes, segments, and mutaitons (default: none)", outputNodeFilename, false);
   ap.parse();
 
   g_rng.seed(seed);
@@ -89,6 +93,8 @@ int main(int argc, char** argv)
   phylo.sampleMutations(n, l);
 
   phylo.writeDOT(std::cout);
+  phylo.writeTree(std::cout, outputTreeFilename);
+  phylo.writeNodeFile(std::cout, outputNodeFilename);
 
   return 0;
 }

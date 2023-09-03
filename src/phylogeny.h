@@ -25,6 +25,10 @@ public:
 
   void writeDOT(std::ostream& out) const;
 
+  void writeTree(std::ostream& out, std::string& outputTreeFilename) const;
+
+  void writeNodeFile(std::ostream& out, std::string& outputNodeFilename) const;
+
   int getNrSegments() const
   {
     return _cnaTrees.size();

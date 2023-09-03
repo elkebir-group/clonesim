@@ -1,4 +1,0 @@
-/scratch/data/anna/clonesim/build/CMakeFiles/generatecnatrees.dir
-/scratch/data/anna/clonesim/build/CMakeFiles/generategenotypetrees.dir
-/scratch/data/anna/clonesim/build/CMakeFiles/mergegenotypetrees.dir
-/scratch/data/anna/clonesim/build/CMakeFiles/simulate.dir

@@ -31,12 +31,18 @@ public:
   /// \param out Output stream
   void writeDOT(std::ostream& out) const;
 
+
+  void writeTree(std::ostream& out, std::string& outputTreeFilename) const;
+
+  void writeNodeFile(std::ostream& out, std::string& outputNodeFilename) const;
+
   /// Sample mixture proportions on nodes
   ///
   /// \param nrSamples Number of samples
   /// \param expPurity Expected purity
   /// \param minProportion Minimum proportion
   void sampleProportions(int nrSamples, double expPurity, double minProportion);
+
 
   int getNrSegments() const
   {

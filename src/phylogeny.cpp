@@ -3,6 +3,7 @@
 //
 
 #include "phylogeny.h"
+#include <fstream>
 #include <algorithm>
 #include <lemon/connectivity.h>
 #include "beta_distribution.hpp"
@@ -408,6 +409,92 @@ void Phylogeny::writeDOT(std::ostream& out) const
 
   out << "}" << std::endl;
 }
+
+
+void Phylogeny::writeTree(std::ostream&out, std::string&outputTreeFilename) const {
+  Digraph::NodeMap<int> nodeToIndex(_T);
+  int idx = 0;
+  for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+    nodeToIndex[v] = idx++;
+  }
+
+  //out << "root\t" << _T.id(_root); //<< _root;
+  if (outputTreeFilename.compare("") != 0) {
+    std::ofstream myfile;
+    myfile.open(outputTreeFilename);
+    if (!myfile) {
+      out << "Error in creating output file";
+    } else {
+      myfile << "Parent\tChild\n";
+      for (ArcIt a(_T); a != lemon::INVALID; ++a)
+      {
+        myfile << nodeToIndex[_T.source(a)] << "\t" << nodeToIndex[_T.target(a)] << std::endl;
+      }
+
+    }
+    myfile.close();
+  } else {
+    out << "Please specify output filename for tree\n";
+  }
+}
+
+void Phylogeny::writeNodeFile(std::ostream&out, std::string&outputNodeFilename) const {
+  Digraph::NodeMap<int> nodeToIndex(_T);
+  int idx = 0;
+  for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+    nodeToIndex[v] = idx++;
+  }
+
+  if (outputNodeFilename.compare("") != 0) {
+    std::ofstream myfile;
+    myfile.open(outputNodeFilename);
+    if (!myfile) {
+      out << "Error in creating output file";
+    } else {
+
+        int isThereMutation = 0;
+        myfile << "node\tsegment\tx\ty\tm\txbar\tybar\tclusterIDofMutation\n";
+        for (NodeIt v(_T); v != lemon::INVALID; ++v) // printing out node
+        {
+          for (int segmentIdx = 0; segmentIdx < _cnaTrees.size(); ++segmentIdx)
+          {
+            for (int mutIdx : _segmentToMut[segmentIdx])
+            {
+              isThereMutation = 1;
+              myfile << nodeToIndex[v] << "\t"; //printing out node
+              myfile << segmentIdx << "\t"; //segment label
+              myfile << _cnaTrees[segmentIdx].label(_charState[v][segmentIdx])[1] << "\t"; //x of segment
+              myfile << _cnaTrees[segmentIdx].label(_charState[v][segmentIdx])[3] << "\t"; //y of segment
+              myfile << mutIdx << "\t"; //mutationID  
+              myfile << _xbar[v][mutIdx] << "\t" << _ybar[v][mutIdx] << "\t"; //xbar and ybar of mutation
+              myfile << _mutToCluster[mutIdx] << "\n"; //clusterID of mutation
+            }
+            if (isThereMutation == 0) { //edge case for if no mutations occur in that segment 
+              myfile << nodeToIndex[v] << "\t"; //printing out node
+              myfile << segmentIdx << "\t"; //segment label
+              myfile << _cnaTrees[segmentIdx].label(_charState[v][segmentIdx])[1] << "\t"; //x of segment
+              myfile << _cnaTrees[segmentIdx].label(_charState[v][segmentIdx])[3] << "\t"; //y of segment
+              myfile << "\n";
+              //out << -1 << "\t"; //mutationID  
+              //out << -1 << "\t" << -1 << "\t"; //xhat and yhat of mutation
+              //out << -1 << "\n"; //clusterID of mutation
+            } 
+            isThereMutation = 0;
+          }
+        } 
+
+    }
+    myfile.close();
+  }
+  else {
+    out << "Please specify output filename for node and segment information\n";
+  }
+
+ 
+}
+
+//void Phylogeny::write
+
 
 void Phylogeny::sampleMutations(int n, int l)
 {

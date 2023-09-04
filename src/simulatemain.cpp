@@ -23,6 +23,8 @@ int main(int argc, char** argv)
   double minProp = 0.05;
   std::string dotFilename;
   std::string inputStateTreeFilename;
+  std::string outputTreeFilename = "";
+  std::string outputNodeFilename = "";
   bool removeUnsampledNodes = false;
 
   lemon2::ArgParser ap(argc, argv);
@@ -34,9 +36,12 @@ int main(int argc, char** argv)
     .refOption("n", "Number of SNVs (default: 1000)", n, false)
     .refOption("m", "Number of samples (default: 2)", m, false)
     .refOption("k", "Number of segments (default: 10)", k, false)
+    .refOption("l", "Number of mutation clusters (default: 5)", l, false)
+    .refOption("STree", "Output filename for tree (default: none)", outputTreeFilename, false)
+    .refOption("SNode", "Output filename for csv with information about nodes, segments, and mutaitons (default: none)", outputNodeFilename, false);
     .refOption("dot", "Graphviz DOT output filename (default: '', no output)", dotFilename, false)
     .refOption("r", "Remove unsampled nodes", removeUnsampledNodes, false)
-    .refOption("l", "Number of mutation clusters (default: 5)", l, false);
+
   ap.parse();
 
   g_rng.seed(seed);
@@ -95,6 +100,11 @@ int main(int argc, char** argv)
   phylo.sampleMutations(n, l);
   phylo.sampleProportions(m, expPurity, minProp);
 
+
+  phylo.writeDOT(std::cout);
+  phylo.writeTree(std::cout, outputTreeFilename);
+  phylo.writeNodeFile(std::cout, outputNodeFilename);
+
   if (removeUnsampledNodes)
   {
     Phylogeny newPhylo = phylo.removeUnsampledNodes();
@@ -116,6 +126,7 @@ int main(int argc, char** argv)
       outDOT.close();
     }
   }
+
 
   return 0;
 }

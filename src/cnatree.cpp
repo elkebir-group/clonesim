@@ -122,19 +122,13 @@ CnaTree& CnaTree::operator=(const CnaTree& other)
 
 std::ostream& operator<<(std::ostream& out, const CnaTree& T)
 {
-  // output pi
-  out << -1;
-  for (int i = 1; i < T.k(); ++i)
-  {
-    out << " " << T.parent(i);
-  }
-  out << std::endl;
-
+  out << T.k() << " # nodes" << std::endl;
   // output vertices
   for (int i = 0; i < T.k(); ++i)
   {
     Node v_i = T.node(i);
-    out << T._cnState[v_i]._x
+    out << i << " " << T._label[v_i] << " "
+        << T._cnState[v_i]._x
         << " " << T._cnState[v_i]._y;
     for (double s: T._s[v_i])
     {
@@ -143,13 +137,10 @@ std::ostream& operator<<(std::ostream& out, const CnaTree& T)
     out << std::endl;
   }
 
-  // output labels
-  out << T.label(0);
-  for (int i = 1; i < T.k(); ++i)
+  for (ArcIt a(T._T); a != lemon::INVALID; ++a)
   {
-    out << " " << T.label(i);
+    out << T.state(T._T.source(a)) << " " << T.state(T._T.target(a)) << std::endl;
   }
-  out << std::endl;
 
   return out;
 }
@@ -160,43 +151,83 @@ std::istream& operator>>(std::istream& in, CnaTree& T)
   getline(in, line);
   std::stringstream ss(line);
 
-  StringVector s;
-  boost::split(s, line, boost::is_any_of(" \t"));
+  T._T.clear();
 
-  IntVector pi(s.size(), -1);
-  for (int i = 0; i < s.size(); ++i)
+
+  int k = -1;
+  ss >> k;
+  if (k < 0)
   {
-    ss >> pi[i];
+    throw std::runtime_error("Expected positive number of states");
+  }
+
+//  IntVector states(k);
+  StringVector labels(k);
+  IntVector x(k);
+  IntVector y(k);
+  DoubleMatrix prop(k);
+
+  for (int i = 0; i < k; ++i)
+  {
+    getline(in, line);
+    StringVector s;
+    boost::split(s, line, boost::is_any_of(" \t"));
+
+    if (s.size() < 4)
+    {
+      throw std::runtime_error("Expected at least four space-separated tokens");
+    }
+
+    int state = boost::lexical_cast<int>(s[0]);
+
+    labels[state] = s[1];
+    x[state] = boost::lexical_cast<int>(s[2]);
+    y[state] = boost::lexical_cast<int>(s[3]);
+
+    for (int idx = 4; idx < s.size(); ++idx)
+    {
+      prop[state].push_back(boost::lexical_cast<double>(s[idx]));
+    }
+  }
+
+  // parse edge list
+  IntVector pi(k, -1);
+  for (int i = 0; i < k - 1; ++i)
+  {
+    getline(in, line);
+    StringVector s;
+    boost::split(s, line, boost::is_any_of(" \t"));
+
+    if (s.size() != 2)
+    {
+      throw std::runtime_error("Expected two integer tokens");
+    }
+
+    int source = boost::lexical_cast<int>(s[0]);
+    int target = boost::lexical_cast<int>(s[1]);
+
+    if (!(0 <= source && source < k))
+    {
+      throw std::runtime_error("Invalid source node");
+    }
+
+    if (!(0 <= target && target < k))
+    {
+      throw std::runtime_error("Invalid target node");
+    }
+
+    pi[target] = source;
   }
 
   T = CnaTree(pi);
 
   for (int i = 0; i < T.k(); ++i)
   {
-    getline(in, line);
-    ss.clear();
-    ss.str(line);
-
     Node v_i = T.node(i);
-    CnaTree::CnaGenotype& cnState_i = T._cnState[v_i];
-
-    boost::split(s, line, boost::is_any_of(" "));
-
-    cnState_i._x = boost::lexical_cast<int>(s[0]);
-    cnState_i._y = boost::lexical_cast<int>(s[1]);
-
-    for (int j = 2; j < s.size(); ++j)
-    {
-      T._s[v_i].push_back(boost::lexical_cast<double>(s[j]));
-    }
-  }
-
-  getline(in, line);
-  ss.clear();
-  ss.str(line);
-  for (int i = 0; i < T.k(); ++i)
-  {
-    ss >> T._label[T._stateToNode[i]];
+    T._cnState[v_i]._x = x[i];
+    T._cnState[v_i]._y = y[i];
+    T._label[v_i] = labels[i];
+    T._s[v_i] = prop[i];
   }
 
   return in;

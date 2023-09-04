@@ -14,6 +14,9 @@ public:
   /// Default constructor
   Phylogeny();
 
+  /// Copy constructor
+  Phylogeny(const Phylogeny& other);
+
   /// Add segment
   void addSegment(const CnaTree& cnaTree, bool truncal);
 
@@ -23,11 +26,23 @@ public:
   /// \param l Number of mutation clusters
   void sampleMutations(int n, int l);
 
+  /// Write phylogeny in graphviz format
+  ///
+  /// \param out Output stream
   void writeDOT(std::ostream& out) const;
+
 
   void writeTree(std::ostream& out, std::string& outputTreeFilename) const;
 
   void writeNodeFile(std::ostream& out, std::string& outputNodeFilename) const;
+
+  /// Sample mixture proportions on nodes
+  ///
+  /// \param nrSamples Number of samples
+  /// \param expPurity Expected purity
+  /// \param minProportion Minimum proportion
+  void sampleProportions(int nrSamples, double expPurity, double minProportion);
+
 
   int getNrSegments() const
   {
@@ -49,6 +64,8 @@ public:
     return _mrca;
   }
 
+  Phylogeny removeUnsampledNodes() const;
+
 private:
   typedef Digraph::NodeMap<IntVector> CharacterStateVector;
   typedef Digraph::NodeMap<std::pair<Node, Node> > NodePairNodeMap;
@@ -69,6 +86,8 @@ private:
                          std::ostream& out) const;
 
   void initD(Node v);
+
+  void initClusterD(Node v, int clusterIdx);
 
   void sampleMutation(const Node u, const int segmentIdx, const int mutIdx);
 
@@ -105,6 +124,13 @@ private:
   IntSetVector _segmentToMut;
   /// Descendant set
   NodeNodeSetMap _D;
+  /// Cluster descendants
+  NodeMatrix _clusterD;
+  /// Proportions
+  DoubleVectorNodeMap _proportions;
+
+  friend std::ostream& operator<<(std::ostream& out, const Phylogeny& T);
+  friend std::istream& operator>>(std::istream& in, Phylogeny& T);
 };
 
 #endif //PHYLOGENY_H

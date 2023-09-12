@@ -38,9 +38,9 @@ int main(int argc, char** argv)
     .refOption("k", "Number of segments (default: 10)", k, false)
     .refOption("l", "Number of mutation clusters (default: 5)", l, false)
     .refOption("STree", "Output filename for tree (default: none)", outputTreeFilename, false)
-    .refOption("SNode", "Output filename for csv with information about nodes, segments, and mutaitons (default: none)", outputNodeFilename, false);
+    .refOption("SNode", "Output filename for csv with information about nodes, segments, and mutaitons (default: none)", outputNodeFilename, false)
     .refOption("dot", "Graphviz DOT output filename (default: '', no output)", dotFilename, false)
-    .refOption("r", "Remove unsampled nodes", removeUnsampledNodes, false)
+    .refOption("r", "Remove unsampled nodes", removeUnsampledNodes, false);
 
   ap.parse();
 

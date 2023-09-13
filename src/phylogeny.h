@@ -36,6 +36,8 @@ public:
 
   void writeNodeFile(std::ostream& out, std::string& outputNodeFilename) const;
 
+  void writeProportionFile(std::ostream& out, std::string& outputProportionFilename, int nrSamples) const;
+
   /// Sample mixture proportions on nodes
   ///
   /// \param nrSamples Number of samples

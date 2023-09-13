@@ -9,7 +9,9 @@
 #include "cnagraph.h"
 #include "arg_parser.h"
 #include "phylogeny.h"
+#include "singlecellgeneration.h"
 #include <fstream>
+#include <string>
 
 int main(int argc, char** argv)
 {
@@ -21,10 +23,15 @@ int main(int argc, char** argv)
   int seed = 0;
   double expPurity = 0.8;
   double minProp = 0.05;
+  int num_cells = 1000;
+  double read_depth = .05;
+  double _alpha_fp = .001;
+  std::string out_dir = "results";
   std::string dotFilename;
   std::string inputStateTreeFilename;
   std::string outputTreeFilename = "";
   std::string outputNodeFilename = "";
+  std::string outputProportionFilename = "";
   bool removeUnsampledNodes = false;
 
   lemon2::ArgParser ap(argc, argv);
@@ -39,8 +46,14 @@ int main(int argc, char** argv)
     .refOption("l", "Number of mutation clusters (default: 5)", l, false)
     .refOption("STree", "Output filename for tree (default: none)", outputTreeFilename, false)
     .refOption("SNode", "Output filename for csv with information about nodes, segments, and mutaitons (default: none)", outputNodeFilename, false)
+    .refOption("SProportions", "Output filename for csv with information about nodes, segments, and mutaitons (default: none)", outputProportionFilename, false)
     .refOption("dot", "Graphviz DOT output filename (default: '', no output)", dotFilename, false)
-    .refOption("r", "Remove unsampled nodes", removeUnsampledNodes, false);
+    .refOption("r", "Remove unsampled nodes", removeUnsampledNodes, false)
+    .refOption("num_cells", "The number of cells to simulate with the single cell generation (default: 1000)", num_cells, false)
+    .refOption("read_depth", "The read_depth for the single cell generation (default: .05)", read_depth, false)
+    .refOption("_alpha_fp", "The sequencing error for single cell generation (default .001)", _alpha_fp, false)
+    .refOption("out_dir", "The output directory for single cell generation (default: results)", out_dir, false);
+
 
   ap.parse();
 
@@ -97,26 +110,32 @@ int main(int argc, char** argv)
     phylo.addSegment(T, T.truncal());
   }
 
-  phylo.sampleMutations(n, l);
+  phylo.sampleMutations(n, l); 
   phylo.sampleProportions(m, expPurity, minProp);
 
 
-  phylo.writeDOT(std::cout);
+/*   phylo.writeDOT(std::cout); 
   phylo.writeTree(std::cout, outputTreeFilename);
   phylo.writeNodeFile(std::cout, outputNodeFilename);
+  phylo.writeProportionFile(std::cout, outputProportionFilename, m); */
 
-  if (removeUnsampledNodes)
+
+  if (removeUnsampledNodes) 
   {
     Phylogeny newPhylo = phylo.removeUnsampledNodes();
-    std::cout << newPhylo;
+    //newPhylo.writeDOT(std::cout); //this line
+    newPhylo.writeTree(std::cout, outputTreeFilename);
+    newPhylo.writeNodeFile(std::cout, outputNodeFilename);
+    newPhylo.writeProportionFile(std::cout, outputProportionFilename, m);
+/*     std::cout << newPhylo; 
     if (!dotFilename.empty())
     {
       std::ofstream outDOT(dotFilename);
       newPhylo.writeDOT(outDOT);
       outDOT.close();
-    }
+    } */
   }
-  else
+/*   else
   {
     std::cout << phylo;
     if (!dotFilename.empty())
@@ -125,8 +144,18 @@ int main(int argc, char** argv)
       phylo.writeDOT(outDOT);
       outDOT.close();
     }
-  }
+  } */
+  
 
+  
+  for (int i = 0; i < m; i++) {
+    SingleCell sc(num_cells, read_depth, _alpha_fp, out_dir, k, m); 
+    sc.loadData(std::cout, outputProportionFilename, outputNodeFilename);
+    sc.generateECDF(std::cout, i);
+    sc.initializeSCS(std::cout); 
+    sc.generateCells(std::cout, i, g_rng);
+    sc.printSCS(std::cout, i);
+  }
 
   return 0;
 }

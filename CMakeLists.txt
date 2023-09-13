@@ -97,6 +97,7 @@ set( simulate_src
   src/utils.cpp
   src/basematrix.cpp
   src/phylogeny.cpp
+  src/singlecellgeneration.cpp
 )
 
 set( simulate_hdr
@@ -109,6 +110,7 @@ set( simulate_hdr
   src/utils.h
   src/basematrix.h
   src/phylogeny.h
+  src/singlecellgeneration.h
 )
 
 set( LIBLEMON_ROOT "$ENV{HOME}/lemon" CACHE PATH "Additional search directory for lemon library" )

@@ -737,6 +737,34 @@ void Phylogeny::initD(Node u)
   }
 }
 
+void Phylogeny::writeProportionFile(std::ostream&out, std::string&outputProportionFilename, int nrSamples) const {
+if (outputProportionFilename.compare("") != 0) {
+    std::ofstream myfile;
+    myfile.open(outputProportionFilename);
+    if (!myfile) {
+      out << "Error in creating output file";
+    } else {
+        myfile << "Node\tProportionofEachSample\n";
+        IntNodeMap nodeId(_T);
+        int index = 0;
+        for (NodeIt v(_T); v != lemon::INVALID; ++v)
+        {
+          nodeId[v] = index++;
+        }
+        
+        for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+          myfile << nodeId[v];
+          for (int sampleIdx = 0; sampleIdx < nrSamples; sampleIdx++) {
+            myfile << "\t" << _proportions[v][sampleIdx];
+            }
+            myfile << "\n";
+          }
+    }
+          myfile.close();
+  }
+    }
+
+
 void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minProportion)
 {
   const int nrClusters = _clusterToNode.size();

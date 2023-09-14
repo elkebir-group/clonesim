@@ -782,7 +782,9 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
       sftrabbit::beta_distribution<> betaDist(alpha, beta);
 
       purityVector[sampleIdx] = betaDist(g_rng);
-    }
+    } //else {
+      //purityVector[sampleIdx] = 1.;
+    //}
   }
 
   // initialize proportions

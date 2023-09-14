@@ -5,14 +5,14 @@
 #include <lemon/connectivity.h>
 #include <map>
 
-SingleCell::SingleCell (int numSCS, float read_depth, float _alpha_fp, std::string outdir, int numberOfSegments, int num_samples)
+SingleCell::SingleCell (int numSCS, float read_depth, float alpha_fp, std::string outdir, int numSegments, int numSamples)
     : _NUMSCS(numSCS) //** HYPERPARAMETER
     , _READ_DEPTH(read_depth) //** HYPERPARAMETER
-    , _numberOfSegments(numberOfSegments)
-    , _numSamples(num_samples)
+    , _numSegments(numSegments)
+    , _numSamples(numSamples)
     , outdir(outdir)
-    , _outFiles({ {"SPARSE", outdir + "/sparse"}, {"CELLS", outdir + "/cells"}})
-    , _alpha_fp (_alpha_fp)
+    , _outFiles({ {"SPARSE", outdir + "/sparse"}, {"CELLS", outdir + "/cells"}, {"CELLASSIGNMENTS", outdir + "/cellAssignments"}})
+    , _alpha_fp (alpha_fp)
     //, _seed
     , _varReads()
     , _refReads()
@@ -20,7 +20,7 @@ SingleCell::SingleCell (int numSCS, float read_depth, float _alpha_fp, std::stri
     , _cellLabels()
     , _SCS_PREV() //Note: the first column is the node ID 
     , _NODE_INFORMATION()
-    , ecdf() //cdf of clonal proportions
+    , _ecdf() //cdf of clonal proportions
     , _mutAlleles()
     , _refAlleles ()
     , _totalAlleles()
@@ -29,7 +29,7 @@ SingleCell::SingleCell (int numSCS, float read_depth, float _alpha_fp, std::stri
     , _numClones (0)
     , _nodeInformationRows (0)
     , _nodeInformationColumns (0)
-    , _total_mutations (0)
+    , _numMutations (0)
     , _nodeCol (0)
     , _segmentCol (1)
     , _xCol (2)
@@ -125,12 +125,12 @@ void SingleCell::loadData(std::ostream&out, std::string&outputProportionFilename
 // _nodes is the number of nodes/clones in the tree
 void SingleCell::generateECDF(std::ostream&out, int i) 
 {
-    ecdf.resize(1, std::vector<float>(_numClones, 0.0));
+    _ecdf.resize(1, std::vector<float>(_numClones, 0.0));
     float cdf = 0.0f;
     for (int j = 0; j < _numClones; ++j)
     {
         cdf += _SCS_PREV[j][i+1]; //_SCS_PREV is a transpose of what ecdf should be ; the i+1 is because the first column of _SCS_PREV is the clone number
-        ecdf[0][j] = cdf;
+        _ecdf[0][j] = cdf;
  
     }
 
@@ -145,25 +145,25 @@ void SingleCell::initializeSCS(std::ostream&out)
 
     //Getting total_mutations: 
     for (int i = 0; i < _nodeInformationRows; i++) {
-        if (_NODE_INFORMATION[i][_mCol] > _total_mutations) {
-            _total_mutations = _NODE_INFORMATION[i][_mCol];
+        if (_NODE_INFORMATION[i][_mCol] > _numMutations) {
+            _numMutations = _NODE_INFORMATION[i][_mCol];
         }
     }
-    _total_mutations ++; //to account for the fact that there is a 0 mutation
+    _numMutations ++; //to account for the fact that there is a 0 mutation
     
     //ASSUMPTION: That there are all mutations consecutively (i.e., no missing mutation ids) or that it wouldn't matter if there is
 
-    _varReads.resize(_NUMSCS, std::vector<int>(_total_mutations));;
-    _refReads.resize(_NUMSCS, std::vector<int>(_total_mutations));;
-    _totReads.resize(_NUMSCS, std::vector<int>(_total_mutations));;
-    _refAlleles.resize(_numClones, std::vector<std::vector<int>>(_total_mutations, std::vector<int>(2, 0)));; 
-    _mutAlleles.resize(_numClones, std::vector<std::vector<int>>(_total_mutations, std::vector<int>(2, 0)));; 
-    _totalAlleles.resize(_numClones, std::vector<std::vector<int>>(_total_mutations, std::vector<int>(2, 0)));; 
-    _segments.resize(_numClones, std::vector<int>(_total_mutations));
-    _segmentCopyNumbers.resize(_numClones, std::vector<std::vector<int>>(_numberOfSegments, std::vector<int>(2, 0)));;
+    _varReads.resize(_NUMSCS, std::vector<int>(_numMutations));;
+    _refReads.resize(_NUMSCS, std::vector<int>(_numMutations));;
+    _totReads.resize(_NUMSCS, std::vector<int>(_numMutations));;
+    _refAlleles.resize(_numClones, std::vector<std::vector<int>>(_numMutations, std::vector<int>(2, 0)));; 
+    _mutAlleles.resize(_numClones, std::vector<std::vector<int>>(_numMutations, std::vector<int>(2, 0)));; 
+    _totalAlleles.resize(_numClones, std::vector<std::vector<int>>(_numMutations, std::vector<int>(2, 0)));; 
+    _segments.resize(_numClones, std::vector<int>(_numMutations));
+    _segmentCopyNumbers.resize(_numClones, std::vector<std::vector<int>>(_numSegments, std::vector<int>(2, 0)));;
     for (int i = 0; i < _NUMSCS; i++) 
     {
-        for (int j = 0; j < _total_mutations; j++) 
+        for (int j = 0; j < _numMutations; j++) 
         {
 
             //_SCS[i][j] = 0;
@@ -175,7 +175,7 @@ void SingleCell::initializeSCS(std::ostream&out)
     }
 
     for (int a = 0; a < _numClones; a++) {
-        for (int b = 0; b < _total_mutations; b++) {
+        for (int b = 0; b < _numMutations; b++) {
             _refAlleles[a][b][0] = 0;
             _mutAlleles[a][b][0] = 0;
             _totalAlleles[a][b][0] = 0;
@@ -187,7 +187,7 @@ void SingleCell::initializeSCS(std::ostream&out)
     }
 
     for (int c = 0; c < _numClones; c++) {
-        for (int d = 0; d < _numberOfSegments; d++) {
+        for (int d = 0; d < _numSegments; d++) {
             _segmentCopyNumbers[c][d][0] = 0;
             _segmentCopyNumbers[c][d][1] = 0;
         }
@@ -217,7 +217,7 @@ void SingleCell::generateCells(std::ostream&out, int sample, std::mt19937 &gen){
 
 
             // ASSUMPTION: that every clone will have every mutation
-            for (int j = 0; j < _total_mutations; j++)
+            for (int j = 0; j < _numMutations; j++)
             {
                 
 
@@ -270,7 +270,7 @@ int SingleCell::sampleSingleCells(std::ostream&out, int sample, std::mt19937 &ge
     int index = 0;
     float total = 0;
 
-    while (r > ecdf[0][index])
+    while (r > _ecdf[0][index])
     {
         index += 1;
     }
@@ -320,18 +320,11 @@ int SingleCell::binomialdraw(float p, int n, std::mt19937 &gen)
 void SingleCell::printSCS(std::ostream&out, int sample)
 {
 
-    std::string fname_sparse = _outFiles["SPARSE"];
-    std::string fname_cell = _outFiles["CELLS"];
 
+    std::string fname_sparse = _outFiles["SPARSE"] + ".p" + std::to_string(sample);
+    std::string fname_cell = _outFiles["CELLS"] + ".p" + std::to_string(sample);
+    std::string fname_cellAssignments = _outFiles["CELLASSIGNMENTS"] + ".p" + std::to_string(sample);
 
-    if (_numSamples > 1)
-    {
-        fname_sparse = _outFiles["SPARSE"] + ".p" + std::to_string(sample);
-        fname_cell = _outFiles["CELLS"] + ".p" + std::to_string(sample);
-
-    }
-
-    
 
 
  
@@ -340,9 +333,9 @@ void SingleCell::printSCS(std::ostream&out, int sample)
     {
         std::string delim = "\t";
         std::ofstream myFile(fname_sparse);
-        myFile << delim << "segment" << delim << "mutation" << delim << "cell" << delim << "varReads" << delim << "totReads" << std::endl; 
+        myFile << "segment" << delim << "mutation" << delim << "cell" << delim << "varReads" << delim << "totReads" << std::endl; 
 
-        for (int j = 0; j < _total_mutations; j++)
+        for (int j = 0; j < _numMutations; j++)
         {
             for (int i = 0; i < _NUMSCS; i++)
             {
@@ -350,7 +343,7 @@ void SingleCell::printSCS(std::ostream&out, int sample)
     
                 if (_totReads[i][j] > 0)
                 {
-                    myFile  << delim << seg << delim << j << delim << i << delim  << _varReads[i][j] << delim << _totReads[i][j] << delim << std::endl;
+                    myFile<< seg << delim << j << delim << i << delim  << _varReads[i][j] << delim << _totReads[i][j] << delim << std::endl;
                 
                 }
             }
@@ -370,10 +363,20 @@ void SingleCell::printSCS(std::ostream&out, int sample)
         for (int i = 0; i < _NUMSCS; i++)
         {
             int c = _cellLabels[i];
-            for (int s = 0; s < _numberOfSegments; s++) {
+            for (int s = 0; s < _numSegments; s++) {
                 myFile << s << delim << i << delim << _segmentCopyNumbers[c][s][0] << delim << _segmentCopyNumbers[c][s][1] << std::endl;
                 
             }
+        }
+        myFile.close();
+    }
+
+    if (_outFiles["CELLASSIGNMENTS"].compare("") != 0) {
+        std::string delim = ",";
+        std::ofstream myFile(fname_cellAssignments);
+        myFile << "Cell" << delim << "Cluster" << std::endl;
+        for (int c = 0; c < _NUMSCS; c++) {
+            myFile << c << delim << _cellLabels[c] << std::endl;
         }
         myFile.close();
     }

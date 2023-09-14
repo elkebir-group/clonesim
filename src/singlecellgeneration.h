@@ -7,15 +7,17 @@
 class SingleCell {
 public: 
     //Default constructor
-    SingleCell(int numSCS, float read_depth, float alpha_fp, std::string outdir, int numSegments, int numSamples);
+    SingleCell(int numSCS, float read_depth, float alpha_fp, std::string outdir, int numSegments, int numSamples, std::mt19937 &gen, double cna_error);
     void loadData(std::ostream& out, std::string& proportionsFileName, std::string& outputNodeFilename) ;
+    void addNoiseCNA();
+    int gaussianDraw(int mean, double errorRate);
     void generateECDF(std::ostream& out, int i);
     void resizeArrays(std::ostream& out);
     void initializeSCS(std::ostream& out);
-    void generateCells(std::ostream& out, int sample, std::mt19937 &gen);
-    int sampleSingleCells(std::ostream& out, int sample, std::mt19937 &gen);
-    std::pair<int, int> draw(std::ostream& out, int mut_alleles, int ref_alleles, std::mt19937 &gen);
-    int binomialdraw(float p, int n, std::mt19937 &gen);
+    void generateCells(std::ostream& out, int sample);
+    int sampleSingleCells(std::ostream& out, int sample);
+    std::pair<int, int> draw(std::ostream& out, int mut_alleles, int ref_alleles);
+    int binomialdraw(float p, int n);
     void printSCS(std::ostream& out, int sample);
     void write_csv(std::string filename, std::vector<int> cell_ids,
                          std::vector<std::string> colnames,
@@ -26,6 +28,8 @@ private:
      const int _NUMSCS;
      float READ_DEPTH;
      int _numSegments;
+     double _cnaError;
+     std::mt19937 _gen;
      //_seed;
      std::vector<std::vector<int>> _varReads; //The number of variant reads at a mutation locus in each single cell. Dimensions: #cells x #mutations 
      std::vector<std::vector<int>> _refReads; // The number of non-mutated reads at a mutation locus in each single cell. Dimensions: #cells x #mutations

@@ -4,12 +4,15 @@
 #include <string>
 #include <lemon/connectivity.h>
 #include <map>
+#include <cmath>
 
-SingleCell::SingleCell (int numSCS, float read_depth, float alpha_fp, std::string outdir, int numSegments, int numSamples)
+SingleCell::SingleCell (int numSCS, float read_depth, float alpha_fp, std::string outdir, int numSegments, int numSamples, std::mt19937 &gen, double cna_error)
     : _NUMSCS(numSCS) //** HYPERPARAMETER
     , _READ_DEPTH(read_depth) //** HYPERPARAMETER
+    , _gen(gen)
     , _numSegments(numSegments)
     , _numSamples(numSamples)
+    , _cnaError(cna_error)
     , outdir(outdir)
     , _outFiles({ {"SPARSE", outdir + "/sparse"}, {"CELLS", outdir + "/cells"}, {"CELLASSIGNMENTS", outdir + "/cellAssignments"}})
     , _alpha_fp (alpha_fp)
@@ -100,7 +103,24 @@ void SingleCell::loadData(std::ostream&out, std::string&outputProportionFilename
     _nodeInformationRows = ii;
 
 
+/*     for (int aa = 0; aa < _nodeInformationRows; aa++) {
+        for (int bb = 0; bb < _nodeInformationColumns; bb++) {
+            out << _NODE_INFORMATION[aa][bb] << "\t";
+        }
+        out << "\n";
+    } 
 
+    out << "\n\n*******\n\n"; */
+
+    addNoiseCNA();
+
+/*     for (int aa = 0; aa < _nodeInformationRows; aa++) {
+        for (int bb = 0; bb < _nodeInformationColumns; bb++) {
+            out << _NODE_INFORMATION[aa][bb] << "\t";
+        }
+        out << "\n";
+    } 
+ */
     
 
 /* 
@@ -118,6 +138,30 @@ void SingleCell::loadData(std::ostream&out, std::string&outputProportionFilename
         out << "\n";
     }  */
     return;
+}
+
+void SingleCell::addNoiseCNA() {
+    for (int r = 0; r < _nodeInformationRows; r++) {
+        int xcopy = _NODE_INFORMATION[r][_xCol];
+        int ycopy = _NODE_INFORMATION[r][_yCol];
+        int newX = gaussianDraw(xcopy, _cnaError);
+        int newY = gaussianDraw(ycopy, _cnaError);
+        _NODE_INFORMATION[r][_xCol] = newX;
+        _NODE_INFORMATION[r][_yCol] = newY;
+    }
+}
+
+int SingleCell::gaussianDraw(int mean, double errorRate)
+{
+    //sample from a binomial distribution
+    double stdDev = errorRate*mean;
+    std::normal_distribution<double> distribution(mean, stdDev);
+    int draw = distribution(_gen);
+    if (draw < 0) {
+        draw = 0;
+    }
+    int copyNumber = std::round(draw);
+    return copyNumber;
 }
 
 // _SCS_PREV[i][j] is the clone proportion of sample i for node j
@@ -205,13 +249,13 @@ void SingleCell::initializeSCS(std::ostream&out)
 
 //Generates variant and reference read counts for _NUMSCS single cells 
 //sample is index of the biopsy sample and is used to make sure the correct clonal proporations are used
-void SingleCell::generateCells(std::ostream&out, int sample, std::mt19937 &gen){
+void SingleCell::generateCells(std::ostream&out, int sample){
     _cellLabels.resize(_NUMSCS);
     std::uniform_real_distribution<> myrand(0, 1);
     for(int i=0; i < _NUMSCS; i++){ //i is the cell label
 
         //sample the clone id from the clonal proportions of the sample
-        int clone = sampleSingleCells(std::cout, sample, gen);
+        int clone = sampleSingleCells(std::cout, sample);
         
         _cellLabels[i] = clone;
 
@@ -242,7 +286,7 @@ void SingleCell::generateCells(std::ostream&out, int sample, std::mt19937 &gen){
 
                 _segments[clone][j] = _NODE_INFORMATION[rowOfMutation][_segmentCol];
 
-                std::pair<int, int> exp = draw(out, _mutAlleles[clone][j][0] +  _mutAlleles[clone][j][1], _refAlleles[clone][j][0] + _refAlleles[clone][j][1], gen);
+                std::pair<int, int> exp = draw(out, _mutAlleles[clone][j][0] +  _mutAlleles[clone][j][1], _refAlleles[clone][j][0] + _refAlleles[clone][j][1]);
 
 
             
@@ -261,11 +305,11 @@ void SingleCell::generateCells(std::ostream&out, int sample, std::mt19937 &gen){
 //sample a clone from the CDF of the clonal proportions for the specified sample
 // FYI, there may be be some existing function to sample directly from the clonal props, but this works. 
 // Feel free to replace if there is 
-int SingleCell::sampleSingleCells(std::ostream&out, int sample, std::mt19937 &gen)
+int SingleCell::sampleSingleCells(std::ostream&out, int sample)
 {
     float r;
     std::uniform_real_distribution<> myrand(0, 1); //uniform distribution between 0 and 1
-    r = myrand(gen);
+    r = myrand(_gen);
 
     int index = 0;
     float total = 0;
@@ -281,7 +325,7 @@ int SingleCell::sampleSingleCells(std::ostream&out, int sample, std::mt19937 &ge
 // _alpha_fp is the per base sequencing error rate
 // _READ_DEPTH is the specified coverage
 
-std::pair<int, int> SingleCell::draw(std::ostream&out, int mut_alleles, int ref_alleles, std::mt19937 &gen)
+std::pair<int, int> SingleCell::draw(std::ostream&out, int mut_alleles, int ref_alleles)
 {
 
  
@@ -292,7 +336,7 @@ std::pair<int, int> SingleCell::draw(std::ostream&out, int mut_alleles, int ref_
     std::poisson_distribution<int> readcounts(cov);
     
     //draw total read counts 
-    treads = readcounts(gen);
+    treads = readcounts(_gen);
     int a = 0;
 
 
@@ -302,17 +346,17 @@ std::pair<int, int> SingleCell::draw(std::ostream&out, int mut_alleles, int ref_
 
 
     //draw variant read counts 
-    int vreads = binomialdraw(p, treads, gen);
+    int vreads = binomialdraw(p, treads);
 
     return (std::make_pair(vreads, treads));
 }
 
 
-int SingleCell::binomialdraw(float p, int n, std::mt19937 &gen)
+int SingleCell::binomialdraw(float p, int n)
 {
     //sample from a binomial distribution
     std::binomial_distribution<int> distribution(n, p);
-    int draw = distribution(gen);
+    int draw = distribution(_gen);
 
     return draw;
 }

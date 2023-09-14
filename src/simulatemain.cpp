@@ -20,6 +20,7 @@ int main(int argc, char** argv)
   int k = 10;
   int kk = 5;
   int l = 5;
+  double cna_error = 0;
   int seed = 0;
   double expPurity = 0.8;
   double minProp = 0.05;
@@ -44,6 +45,7 @@ int main(int argc, char** argv)
     .refOption("m", "Number of samples (default: 2)", m, false)
     .refOption("k", "Number of segments (default: 10)", k, false)
     .refOption("l", "Number of mutation clusters (default: 5)", l, false)
+    .refOption("e", "The error rate for CNA data (default: 0)", cna_error, false)
     .refOption("STree", "Output filename for tree (default: none)", outputTreeFilename, false)
     .refOption("SNode", "Output filename for csv with information about nodes, segments, and mutaitons (default: none)", outputNodeFilename, false)
     .refOption("SProportions", "Output filename for csv with information about nodes, segments, and mutaitons (default: none)", outputProportionFilename, false)
@@ -149,11 +151,11 @@ int main(int argc, char** argv)
 
   
   for (int i = 0; i < m; i++) {
-    SingleCell sc(num_cells, read_depth, alpha_fp, out_dir, k, m); 
+    SingleCell sc(num_cells, read_depth, alpha_fp, out_dir, k, m, g_rng, cna_error); 
     sc.loadData(std::cout, outputProportionFilename, outputNodeFilename);
     sc.generateECDF(std::cout, i);
     sc.initializeSCS(std::cout); 
-    sc.generateCells(std::cout, i, g_rng);
+    sc.generateCells(std::cout, i);
     sc.printSCS(std::cout, i);
   }
 

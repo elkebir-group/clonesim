@@ -50,8 +50,7 @@ void SingleCell::loadData(std::ostream&out, std::string&outputProportionFilename
     int j = 0;
     std::ifstream file(outputProportionFilename);
     if (!file.is_open()) {
-        out << "Could not open node probability file";
-        return;
+        throw std::runtime_error("Could not open node probability file");
     }
     std::string line; 
     getline(file, line); //discard header 
@@ -80,8 +79,7 @@ void SingleCell::loadData(std::ostream&out, std::string&outputProportionFilename
 
     std::ifstream file2(outputNodeFilename);
     if (!file2.is_open()) {
-        out << "Could not open node file";
-        return;
+        throw std::runtime_error("Coult not open node file");
     }
     std::string line2; 
     getline(file2, line2); //discard header 

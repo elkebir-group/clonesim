@@ -385,7 +385,7 @@ void SingleCell::printSCS(std::ostream&out, int sample)
     
                 if (_totReads[i][j] > 0)
                 {
-                    myFile<< seg << delim << j << delim << i << delim  << _varReads[i][j] << delim << _totReads[i][j] << delim << std::endl;
+                    myFile<< seg << delim << j << delim << i << delim  << _varReads[i][j] << delim << _totReads[i][j] << std::endl;
                 
                 }
             }

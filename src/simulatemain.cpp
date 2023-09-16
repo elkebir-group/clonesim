@@ -85,6 +85,8 @@ int main(int argc, char** argv)
     }
   }
 
+  std::cerr << "CNA trees read in, constructing clonal tree..." << std::endl;
+
   if (kk > k)
   {
     std::cerr << "Error: kk > k" << std::endl;
@@ -115,6 +117,7 @@ int main(int argc, char** argv)
   }
 
   phylo.sampleMutations(n, l); 
+  std::cerr << "Clonal tree constructed, sampling proportions..." << std::endl;
   phylo.sampleProportions(m, expPurity, minProp);
 
 
@@ -124,16 +127,21 @@ int main(int argc, char** argv)
   phylo.writeProportionFile(std::cout, outputProportionFilename, m); */
 
 
+  std::cerr << "Removing unsampled nodes..." << std::endl;
   if (removeUnsampledNodes) 
   {
+    std::cerr << "Writing clonal tree output files..." << std::endl;
     Phylogeny newPhylo = phylo.removeUnsampledNodes();
+    std::cerr << "Writing clonal tree output files..." << std::endl;
     newPhylo.writeDOT(std::cout); 
     newPhylo.writeTree(std::cout, outputTreeFilename);
     newPhylo.writeNodeFile(std::cout, outputNodeFilename);
     newPhylo.writeProportionFile(std::cout, outputProportionFilename, m);
+    std::cerr << "Done writing clonal tree files..." << std::endl;
 
     if (!dotFilename.empty())
     {
+
       std::ofstream outDOT(dotFilename);
       newPhylo.writeDOT(outDOT);
       outDOT.close();
@@ -141,6 +149,7 @@ int main(int argc, char** argv)
   }
    else
   {
+   
     phylo.writeDOT(std::cout); 
     phylo.writeTree(std::cout, outputTreeFilename);
     phylo.writeNodeFile(std::cout, outputNodeFilename);
@@ -157,13 +166,21 @@ int main(int argc, char** argv)
   
 
   if (_sc == true) {
+    std::cerr << "Generating single cell data..." << std::endl;
     for (int i = 0; i < m; i++) {
+       std::cerr << "starting sample " << i  << std::endl;
       SingleCell sc(num_cells, read_depth, alpha_fp, out_dir, k, m, g_rng, cna_error); 
+      std::cerr << "loading data" << std::endl;
       sc.loadData(std::cout, outputProportionFilename, outputNodeFilename);
+      std::cerr << "generating ecdf" << std::endl;
       sc.generateECDF(std::cout, i);
+      std::cerr << "initializing ecdf" << std::endl;
       sc.initializeSCS(std::cout); 
+      std::cerr << "generate cells" << std::endl;
       sc.generateCells(std::cout, i);
+      std::cerr << "saving data" << std::endl;
       sc.printSCS(std::cout, i);
+      std::cerr << "sample  " << i  << " complete!" << std::endl;
     }
   }
 

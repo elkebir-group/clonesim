@@ -77,11 +77,11 @@ Not generating single cell data:
 
   With removing unsampled nodes: 
   
-  ./simulate -n 50 -m 2 -purity .99 -SNode nodetest4.csv -STree treetest4.csv -SProportions ptest4.c -S cnatrees.txt  -alpha_fp .002 -r
+    ./simulate -n 50 -m 2 -purity .99 -SNode nodetest4.csv -STree treetest4.csv -SProportions ptest4.c -S cnatrees.txt  -alpha_fp .002 -r
   
   Without removing unsampled nodes: 
   
-  ./simulate -n 50 -m 2 -purity .99 -SNode nodetest4.csv -STree treetest4.csv -SProportions ptest4.c -S cnatrees.txt  -alpha_fp .002 
+    ./simulate -n 50 -m 2 -purity .99 -SNode nodetest4.csv -STree treetest4.csv -SProportions ptest4.c -S cnatrees.txt  -alpha_fp .002 
 
 
 

@@ -423,7 +423,7 @@ void Phylogeny::writeTree(std::ostream&out, std::string&outputTreeFilename) cons
     std::ofstream myfile;
     myfile.open(outputTreeFilename);
     if (!myfile) {
-      out << "Error in creating output file";
+      throw std::runtime_error("Error in creating output file");
     } else {
       myfile << "Parent\tChild\n";
       for (ArcIt a(_T); a != lemon::INVALID; ++a)
@@ -434,7 +434,7 @@ void Phylogeny::writeTree(std::ostream&out, std::string&outputTreeFilename) cons
     }
     myfile.close();
   } else {
-    out << "Please specify output filename for tree\n";
+    throw std::runtime_error("Please specify output filename for tree");
   }
 }
 
@@ -449,7 +449,7 @@ void Phylogeny::writeNodeFile(std::ostream&out, std::string&outputNodeFilename) 
     std::ofstream myfile;
     myfile.open(outputNodeFilename);
     if (!myfile) {
-      out << "Error in creating output file";
+      throw std::runtime_error("Error in creating output file");
     } else {
 
         int isThereMutation = 0;
@@ -487,13 +487,11 @@ void Phylogeny::writeNodeFile(std::ostream&out, std::string&outputNodeFilename) 
     myfile.close();
   }
   else {
-    out << "Please specify output filename for node and segment information\n";
+    throw std::runtime_error("Please specify proportion file name");
   }
 
  
 }
-
-//void Phylogeny::write
 
 
 void Phylogeny::sampleMutations(int n, int l)
@@ -742,7 +740,7 @@ if (outputProportionFilename.compare("") != 0) {
     std::ofstream myfile;
     myfile.open(outputProportionFilename);
     if (!myfile) {
-      out << "Error in creating output file";
+      throw std::runtime_error("Error in creating output file for proportions");
     } else {
         myfile << "Node\tProportionofEachSample\n";
         IntNodeMap nodeId(_T);
@@ -761,6 +759,8 @@ if (outputProportionFilename.compare("") != 0) {
           }
     }
           myfile.close();
+  } else {
+    throw std::runtime_error("Please specify proportion file name");
   }
     }
 

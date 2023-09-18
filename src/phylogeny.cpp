@@ -873,6 +873,7 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
 void Phylogeny::initClusterD(Node v, int clusterIdx)
 {
 
+
   if (_nodeToCluster[v] != -1)
   {
     clusterIdx = _nodeToCluster[v];

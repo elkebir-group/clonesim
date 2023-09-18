@@ -117,8 +117,13 @@ int main(int argc, char** argv)
   }
 
   phylo.sampleMutations(n, l); 
+
   std::cerr << "Clonal tree constructed, sampling proportions..." << std::endl;
+
   phylo.sampleProportions(m, expPurity, minProp);
+
+  std::cerr << "Finished sampling proportions";
+
 
 
 /*   phylo.writeDOT(std::cout); 

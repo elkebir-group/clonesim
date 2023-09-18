@@ -5,6 +5,7 @@
 #include <lemon/connectivity.h>
 #include <map>
 #include <cmath>
+#include <unordered_map>
 
 SingleCell::SingleCell (int numSCS, float read_depth, float alpha_fp, std::string outdir, int numSegments, int numSamples, std::mt19937 &gen, double cna_error)
     : _NUMSCS(numSCS) //** HYPERPARAMETER
@@ -250,6 +251,14 @@ void SingleCell::initializeSCS(std::ostream&out)
 void SingleCell::generateCells(std::ostream&out, int sample){
     _cellLabels.resize(_NUMSCS);
     std::uniform_real_distribution<> myrand(0, 1);
+
+    std::unordered_map<int, std::unordered_map<int, int>> mutationLookUp; 
+    for (int r = 0; r < _nodeInformationRows; r++) {
+        int clone = _NODE_INFORMATION[r][_nodeCol]; 
+        int mutation = _NODE_INFORMATION[r][_mCol];
+        mutationLookUp[clone][mutation] = r;
+    }
+
     for(int i=0; i < _NUMSCS; i++){ //i is the cell label
 
         //sample the clone id from the clonal proportions of the sample
@@ -259,19 +268,12 @@ void SingleCell::generateCells(std::ostream&out, int sample){
 
 
             // ASSUMPTION: that every clone will have every mutation
+
             for (int j = 0; j < _numMutations; j++)
             {
                 
-
-                //Looping through node information to look for the clone and mutation: 
-                //ASSUMPTION: that the node and mutation are present in the dataset; if not, this will attempt to index at -1
-                int rowOfMutation = -1; 
-                for (int r = 0; r < _nodeInformationRows; r++) {
-                    if (_NODE_INFORMATION[r][_nodeCol] == clone && _NODE_INFORMATION[r][_mCol] == j) {
-                        rowOfMutation = r;
-                        break;
-                    }
-                }
+                //ASSUMPTION: that the node and mutation are present in the dataset
+                int rowOfMutation = mutationLookUp[clone][j];
 
                 _totalAlleles[clone][j][0] = _NODE_INFORMATION[rowOfMutation][_xCol];
                 _totalAlleles[clone][j][1] = _NODE_INFORMATION[rowOfMutation][_yCol];

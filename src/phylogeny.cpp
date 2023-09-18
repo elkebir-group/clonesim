@@ -70,7 +70,9 @@ Phylogeny::Phylogeny(const Phylogeny& other)
   }
 
   initD(_root);
-  _clusterD = NodeMatrix(_clusterToNode.size());
+  std::cerr << "_clusterToNode.size\n";
+  std::cerr << _clusterToNode.size() << "\n";
+  _clusterD = NodeMatrix(_clusterToNode.size(), NodeVector(0));
   initClusterD(_mrca, 0);
 }
 
@@ -603,8 +605,11 @@ void Phylogeny::sampleMutations(int n, int l)
     }
   }
 
-  _clusterD = NodeMatrix (_clusterToMut.size());
-  initClusterD(_mrca, 0);
+
+  _clusterD = NodeMatrix (_clusterToMut.size(), NodeVector(0)); 
+  initClusterD(_mrca, 0); 
+
+
 }
 
 void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mutIdx)
@@ -855,25 +860,28 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
     {
       int clusterIdx = sampleToCluster[sampleIdx][cloneIdx];
       double prop = gamma[cloneIdx] / sum * purityVector[sampleIdx];
-
-      std::uniform_int_distribution<> unif_cluster(0, _clusterD[clusterIdx].size() - 1);
-      Node v = _clusterD[clusterIdx][unif_cluster(g_rng)];
-      _proportions[v][sampleIdx] = prop;
+      int a = _clusterD[clusterIdx].size();
+      if (_clusterD[clusterIdx].size() > 0) {
+        std::uniform_int_distribution<> unif_cluster(0, _clusterD[clusterIdx].size() - 1);  //Problem: the _clusterD[clusterIdx].size() - 1 is too large
+        Node v = _clusterD[clusterIdx][unif_cluster(g_rng)]; //This line is where the segfault is!! 
+        _proportions[v][sampleIdx] = prop;
+      } 
     }
   }
 }
 
 void Phylogeny::initClusterD(Node v, int clusterIdx)
 {
+
   if (_nodeToCluster[v] != -1)
   {
     clusterIdx = _nodeToCluster[v];
     _clusterD[clusterIdx].push_back(v);
   }
-  else if (clusterIdx != -1)
+  else if (clusterIdx != -1) 
   {
     _clusterD[clusterIdx].push_back(v);
-  }
+  } 
 
   for (OutArcIt a(_T, v); a != lemon::INVALID; ++a)
   {
@@ -1222,7 +1230,7 @@ Phylogeny Phylogeny::removeUnsampledNodes() const
   }
 
   newPhylo.initD(newPhylo._root);
-  newPhylo._clusterD = NodeMatrix(newPhylo._clusterToNode.size());
+  newPhylo._clusterD = NodeMatrix(newPhylo._clusterToNode.size(), NodeVector(0));
   newPhylo.initClusterD(newPhylo._mrca, 0);
 
   return newPhylo;

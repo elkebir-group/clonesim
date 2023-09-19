@@ -93,36 +93,38 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  std::list<CnaTree> cnaTrees;
-  for (int i = 0; i < kk;)
+  try
   {
-    CnaTree T = CnaGraph::sampleCnaTree();
-    if (T.truncal())
+    std::list<CnaTree> cnaTrees;
+    for (int i = 0; i < kk;)
     {
-      cnaTrees.push_back(T);
-      ++i;
+      CnaTree T = CnaGraph::sampleCnaTree();
+      if (T.truncal())
+      {
+        cnaTrees.push_back(T);
+        ++i;
+      }
     }
-  }
 
-  for (int i = kk; i < k; ++i)
-  {
-    CnaTree T = CnaGraph::sampleCnaTree();
-    cnaTrees.push_back(T);
-  }
+    for (int i = kk; i < k; ++i)
+    {
+      CnaTree T = CnaGraph::sampleCnaTree();
+      cnaTrees.push_back(T);
+    }
 
-  Phylogeny phylo;
-  for (const auto& T : cnaTrees)
-  {
-    phylo.addSegment(T, T.truncal());
-  }
+    Phylogeny phylo;
+    for (const auto& T: cnaTrees)
+    {
+      phylo.addSegment(T, T.truncal());
+    }
 
-  phylo.sampleMutations(n, l); 
+    phylo.sampleMutations(n, l);
 
-  std::cerr << "Clonal tree constructed, sampling proportions..." << std::endl;
+    std::cerr << "Clonal tree constructed, sampling proportions..." << std::endl;
 
-  phylo.sampleProportions(m, expPurity, minProp);
+    phylo.sampleProportions(m, expPurity, minProp);
 
-  std::cerr << "Finished sampling proportions";
+    std::cerr << "Finished sampling proportions";
 
 
 
@@ -132,61 +134,68 @@ int main(int argc, char** argv)
   phylo.writeProportionFile(std::cout, outputProportionFilename, m); */
 
 
-  std::cerr << "Removing unsampled nodes..." << std::endl;
-  if (removeUnsampledNodes) 
-  {
-    std::cerr << "Writing clonal tree output files..." << std::endl;
-    Phylogeny newPhylo = phylo.removeUnsampledNodes();
-    std::cerr << "Writing clonal tree output files..." << std::endl;
-    newPhylo.writeDOT(std::cout); 
-    newPhylo.writeTree(std::cout, outputTreeFilename);
-    newPhylo.writeNodeFile(std::cout, outputNodeFilename);
-    newPhylo.writeProportionFile(std::cout, outputProportionFilename, m);
-    std::cerr << "Done writing clonal tree files..." << std::endl;
-
-    if (!dotFilename.empty())
+    std::cerr << "Removing unsampled nodes..." << std::endl;
+    if (removeUnsampledNodes)
+    {
+//      std::cerr << "Writing clonal tree output files..." << std::endl;
+      Phylogeny newPhylo = phylo.removeUnsampledNodes();
+      std::cout << newPhylo;
+//      std::cerr << "Writing clonal tree output files..." << std::endl;
+//      newPhylo.writeDOT(std::cout);
+//      newPhylo.writeTree(std::cout, outputTreeFilename);
+//      newPhylo.writeNodeFile(std::cout, outputNodeFilename);
+//      newPhylo.writeProportionFile(std::cout, outputProportionFilename, m);
+//      std::cerr << "Done writing clonal tree files..." << std::endl;
+//
+      if (!dotFilename.empty())
+      {
+        std::ofstream outDOT(dotFilename);
+        newPhylo.writeDOT(outDOT);
+        outDOT.close();
+      }
+    }
+    else
     {
 
-      std::ofstream outDOT(dotFilename);
-      newPhylo.writeDOT(outDOT);
-      outDOT.close();
-    } 
-  }
-   else
-  {
-   
-    phylo.writeDOT(std::cout); 
-    phylo.writeTree(std::cout, outputTreeFilename);
-    phylo.writeNodeFile(std::cout, outputNodeFilename);
-    phylo.writeProportionFile(std::cout, outputProportionFilename, m);
+      phylo.writeDOT(std::cout);
+      phylo.writeTree(std::cout, outputTreeFilename);
+      phylo.writeNodeFile(std::cout, outputNodeFilename);
+      phylo.writeProportionFile(std::cout, outputProportionFilename, m);
 
-    if (!dotFilename.empty())
+      if (!dotFilename.empty())
+      {
+        std::ofstream outDOT(dotFilename);
+        phylo.writeDOT(outDOT);
+        outDOT.close();
+      }
+    }
+
+
+    if (_sc == true)
     {
-    std::ofstream outDOT(dotFilename);
-    phylo.writeDOT(outDOT);
-    outDOT.close();
+      std::cerr << "Generating single cell data..." << std::endl;
+      for (int i = 0; i < m; i++)
+      {
+        std::cerr << "starting sample " << i << std::endl;
+        SingleCell sc(num_cells, read_depth, alpha_fp, out_dir, k, m, g_rng, cna_error);
+        std::cerr << "loading data" << std::endl;
+        sc.loadData(std::cout, outputProportionFilename, outputNodeFilename);
+        std::cerr << "generating ecdf" << std::endl;
+        sc.generateECDF(std::cout, i);
+        std::cerr << "initializing ecdf" << std::endl;
+        sc.initializeSCS(std::cout);
+        std::cerr << "generate cells" << std::endl;
+        sc.generateCells(std::cout, i);
+        std::cerr << "saving data" << std::endl;
+        sc.printSCS(std::cout, i);
+        std::cerr << "sample  " << i << " complete!" << std::endl;
+      }
     }
   }
-  
-  
-
-  if (_sc == true) {
-    std::cerr << "Generating single cell data..." << std::endl;
-    for (int i = 0; i < m; i++) {
-       std::cerr << "starting sample " << i  << std::endl;
-      SingleCell sc(num_cells, read_depth, alpha_fp, out_dir, k, m, g_rng, cna_error); 
-      std::cerr << "loading data" << std::endl;
-      sc.loadData(std::cout, outputProportionFilename, outputNodeFilename);
-      std::cerr << "generating ecdf" << std::endl;
-      sc.generateECDF(std::cout, i);
-      std::cerr << "initializing ecdf" << std::endl;
-      sc.initializeSCS(std::cout); 
-      std::cerr << "generate cells" << std::endl;
-      sc.generateCells(std::cout, i);
-      std::cerr << "saving data" << std::endl;
-      sc.printSCS(std::cout, i);
-      std::cerr << "sample  " << i  << " complete!" << std::endl;
-    }
+  catch (std::runtime_error& e)
+  {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
   }
 
   return 0;

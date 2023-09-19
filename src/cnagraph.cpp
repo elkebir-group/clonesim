@@ -643,12 +643,14 @@ void CnaGraph::readCnaTrees(std::istream& in)
 
 CnaTree CnaGraph::sampleCnaTree()
 {
-  std::uniform_int_distribution<> intDist(1, _keys.size());
+  std::uniform_int_distribution<> intDist(0, _keys.size() - 1);
   int sample = intDist(g_rng);
   const auto& L = _keys[sample];
   assert(_dict.count(L) > 0);
 
-  int sample2 = sample % _dict[L].size();
+  std::uniform_int_distribution<> intDist2(0, _dict[L].size() - 1);
+
+  int sample2 = intDist2(g_rng);
   for (const auto& cnaTree : _dict[L])
   {
     if (sample2-- == 0)

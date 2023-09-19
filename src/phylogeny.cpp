@@ -412,8 +412,7 @@ void Phylogeny::writeDOT(std::ostream& out) const
   out << "}" << std::endl;
 }
 
-
-void Phylogeny::writeTree(std::ostream&out, std::string&outputTreeFilename) const {
+void Phylogeny::writeTree(std::ostream& out, std::string&outputTreeFilename) const {
   Digraph::NodeMap<int> nodeToIndex(_T);
   int idx = 0;
   for (NodeIt v(_T); v != lemon::INVALID; ++v) {
@@ -549,7 +548,10 @@ void Phylogeny::sampleMutations(int n, int l)
   // sample the remaining l-1 mutation cluster locations
   NodeVector remainingNodes(_D[_clusterToNode[0]].begin(), _D[_clusterToNode[0]].end());
   std::shuffle(remainingNodes.begin(), remainingNodes.end(), g_rng);
-  assert(remainingNodes.size() >= l - 1);
+  if (!(remainingNodes.size() >= l - 1))
+  {
+    throw std::runtime_error("Invalid number of clusters must be smaller than the number of nodes.");
+  }
 
   for (int i = 0; i < l - 1; ++i)
   {

@@ -97,7 +97,6 @@ set( simulate_src
   src/utils.cpp
   src/basematrix.cpp
   src/phylogeny.cpp
-  src/singlecellgeneration.cpp
 )
 
 set( simulate_hdr
@@ -110,7 +109,21 @@ set( simulate_hdr
   src/utils.h
   src/basematrix.h
   src/phylogeny.h
-  src/singlecellgeneration.h
+)
+
+set ( generatesinglecells_src
+        src/arg_parser.cpp
+        src/singlecellgeneration.cpp
+        src/utils.cpp
+        src/generatesinglecellsmain.cpp
+        src/generatesinglecellsmain.cpp
+)
+
+set ( generatesinglecells_hdr
+        src/arg_parser.h
+        src/utils.h
+        src/singlecellgeneration.h
+        src/generatesinglecellsmain.cpp
 )
 
 set( LIBLEMON_ROOT "$ENV{HOME}/lemon" CACHE PATH "Additional search directory for lemon library" )
@@ -160,3 +173,7 @@ target_link_libraries( simulate ${CommonLibs} )
 
 add_executable( visualizephylo ${visualizephylo_src} ${visualizephylo_hdr} )
 target_link_libraries( visualizephylo ${CommonLibs} )
+
+add_executable( generatesinglecells ${generatesinglecells_src} ${generatesinglecells_hdr}
+        src/generatesinglecellsmain.cpp)
+target_link_libraries( generatesinglecells ${CommonLibs})

@@ -33,7 +33,7 @@ public:
 
   void writeFiles(std::ostream&out, std::string&outputDir, int nrsamples) const;
 
-  void writeTree(std::ostream& out, std::string& outputTreeFilename) const;
+  void writeTree(std::ofstream& myfile) const;
 
   void writeNodeFile(std::ostream& out, std::string& outputNodeFilename) const;
 
@@ -46,6 +46,7 @@ public:
   /// \param minProportion Minimum proportion
   void sampleProportions(int nrSamples, double expPurity, double minProportion);
 
+ 
 
   int getNrSegments() const
   {
@@ -69,8 +70,12 @@ public:
 
   Phylogeny removeUnsampledNodes() const;
 
+  void createIndex();
+
 /// Tree
 Digraph  _T;
+Digraph::NodeMap<int> _nodeToIndex;
+
 private:
   typedef Digraph::NodeMap<IntVector> CharacterStateVector;
   typedef Digraph::NodeMap<std::pair<Node, Node> > NodePairNodeMap;
@@ -95,6 +100,8 @@ private:
   void initClusterD(Node v, int clusterIdx);
 
   void sampleMutation(const Node u, const int segmentIdx, const int mutIdx);
+
+
 
     //move back to private
 

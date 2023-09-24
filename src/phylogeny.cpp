@@ -28,6 +28,7 @@ Phylogeny::Phylogeny()
   , _D(_T)
   , _clusterD()
   , _proportions(_T)
+  , _nodeToIndex(_T)
 {
   _trunk[_root] = false;
 }
@@ -51,6 +52,7 @@ Phylogeny::Phylogeny(const Phylogeny& other)
   , _D(_T)
   , _clusterD()
   , _proportions(_T)
+  , _nodeToIndex(_T)
 {
   lemon::digraphCopy(other._T, _T)
   .node(other._root, _root)
@@ -73,7 +75,7 @@ Phylogeny::Phylogeny(const Phylogeny& other)
     }
   _clusterToNode = NodeVector(_clusterToMut.size(), lemon::INVALID);
 
-  int i = 0;
+  i = 0;
   for (NodeIt v(_T); v != lemon::INVALID; ++v)
   {
       NodeToIDMap[v] = i;
@@ -194,6 +196,20 @@ void Phylogeny::update(const CnaTree& cnaTree, bool truncal,
   {
     _T.erase(node);
   }
+}
+
+void Phylogeny::createIndex(){
+    // Digraph::NodeMap<int> nodeToIndex(_T);
+  int idx = 0;
+  for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+    _nodeToIndex[v] = idx++;
+  }
+  // Iterate over the nodes in the map and print their associated values
+    for ( NodeIt node(_T); node != lemon::INVALID; ++node) {
+        int value = _nodeToIndex[node]; // Access the integer value associated with the node
+        std::cout << "Node: " << value << std::endl;
+    }
+
 }
 
 void Phylogeny::sample(const Digraph& G, const NodePairNodeMap& mapG, const NodeNodeSetMap& toG,
@@ -428,7 +444,7 @@ void Phylogeny::writeFiles(std::ostream&out, std::string&outputDir, int nrsample
     std::string outputTreeFile = outputDir + "/tree.tsv";
     std::string outputNodeFile = outputDir + "/node.tsv";
     std::string outputProportionFile = outputDir + "/proportions.tsv";
-    writeTree(out, outputTreeFile);
+    // writeTree(out, outputTreeFile);
     writeNodeFile(out, outputNodeFile);
     writeProportionFile(out, outputProportionFile, nrsamples);
 }
@@ -463,34 +479,34 @@ void Phylogeny::writeTree(std::ostream& out, std::string&outputTreeFilename) con
 }
      */
 
-void Phylogeny::writeTree(std::ostream& out, std::string&outputTreeFilename) const {
+void Phylogeny::writeTree(std::ofstream& myfile) const {
 
     //out << "root\t" << _T.id(_root); //<< _root;
-    if (outputTreeFilename.compare("") != 0) {
-        std::ofstream myfile;
-        myfile.open(outputTreeFilename);
-        if (!myfile) {
-            throw std::runtime_error("Error in creating output file");
-        } else {
-            myfile << "Parent\tChild\n";
+    // if (outputTreeFilename.compare("") != 0) {
+    //     std::ofstream myfile;
+    //     myfile.open(outputTreeFilename);
+    //     if (!myfile) {
+    //         throw std::runtime_error("Error in creating output file");
+    //     } else {
+            // myfile << "Parent\tChild\n";
             for (ArcIt a(_T); a != lemon::INVALID; ++a)
             {
-                Node s = _T.source(a);
-                int cs = _nodeToCluster[s];
-                Node t = _T.target(a);
-                int ct = _nodeToCluster[t];
-                //myfile << _T.source(a) << "\t" << _T.target(a) << std::endl;
+                Node par = _T.source(a);
+                int parent = _nodeToIndex[par];
+                Node ch = _T.target(a);
+                int child= _nodeToIndex[ch];
+                myfile << parent << "\t" << child << std::endl;
             }
 
-            for (int i = 0; i < _clusterToNode.size(); i++) {
-                Node v = _clusterToNode[i];
-            }
+            // for (int i = 0; i < _clusterToNode.size(); i++) {
+            //     Node v = _clusterToNode[i];
+            // }
 
-        }
+        // }
         myfile.close();
-    } else {
-        throw std::runtime_error("Please specify output filename for tree");
-    }
+    // } else {
+    //     throw std::runtime_error("Please specify output filename for tree");
+    // }
 }
 
 void Phylogeny::writeNodeFile(std::ostream&out, std::string&outputNodeFilename) const {

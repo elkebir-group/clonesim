@@ -104,6 +104,9 @@ int main(int argc, char** argv)
       phylo.addSegment(T, T.truncal());
     }
 
+    phylo.createIndex();
+    std::ofstream outTree("test/tree.txt");
+    phylo.writeTree(outTree);
     phylo.sampleMutations(n, l);
 
 

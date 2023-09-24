@@ -31,6 +31,7 @@ public:
   /// \param out Output stream
   void writeDOT(std::ostream& out) const;
 
+  void writeFiles(std::ostream&out, std::string&outputDir, int nrsamples) const;
 
   void writeTree(std::ostream& out, std::string& outputTreeFilename) const;
 
@@ -68,6 +69,8 @@ public:
 
   Phylogeny removeUnsampledNodes() const;
 
+/// Tree
+Digraph  _T;
 private:
   typedef Digraph::NodeMap<IntVector> CharacterStateVector;
   typedef Digraph::NodeMap<std::pair<Node, Node> > NodePairNodeMap;
@@ -93,9 +96,10 @@ private:
 
   void sampleMutation(const Node u, const int segmentIdx, const int mutIdx);
 
+    //move back to private
+
 private:
-  /// Tree
-  Digraph  _T;
+
   /// Root
   Node _root;
   /// MRCA
@@ -106,6 +110,8 @@ private:
   CnaTreeVector _cnaTrees;
   /// Character state vector
   CharacterStateVector _charState;
+  /// Node to Node ID mapping
+  std::map<Node, int> NodeToIDMap;
   /// Trunk length
   int _trunkLength;
   /// Mutation to cluster
@@ -133,6 +139,7 @@ private:
 
   friend std::ostream& operator<<(std::ostream& out, const Phylogeny& T);
   friend std::istream& operator>>(std::istream& in, Phylogeny& T);
+
 };
 
 #endif //PHYLOGENY_H

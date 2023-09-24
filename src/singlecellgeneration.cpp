@@ -1,16 +1,14 @@
 #include "singlecellgeneration.h"
 #include <fstream>
-#include <algorithm>
 #include <string>
 #include <lemon/connectivity.h>
-#include <map>
+#include "utils.h"
 #include <cmath>
 #include <unordered_map>
 
-SingleCell::SingleCell (int numSCS, float read_depth, float alpha_fp, std::string outdir, int numSegments, int numSamples, std::mt19937 &gen, double cna_error)
+SingleCell::SingleCell (int numSCS, float read_depth, float alpha_fp, std::string outdir, int numSegments, int numSamples, double cna_error)
     : _NUMSCS(numSCS) //** HYPERPARAMETER
     , _READ_DEPTH(read_depth) //** HYPERPARAMETER
-    , _gen(gen)
     , _numSegments(numSegments)
     , _numSamples(numSamples)
     , _cnaError(cna_error)
@@ -46,10 +44,25 @@ SingleCell::SingleCell (int numSCS, float read_depth, float alpha_fp, std::strin
 
     }
 
-void SingleCell::loadData(std::ostream&out, std::string&outputProportionFilename, std::string&outputNodeFilename) {
+void SingleCell::main(std::ostream&out, std::string&input_file_dir, int i) {
+    std::cerr << "loading data" << std::endl;
+    loadData(std::cout, input_file_dir);
+    std::cerr << "generating ecdf" << std::endl;
+    generateECDF(std::cout, i);
+    std::cerr << "initializing ecdf" << std::endl;
+    initializeSCS(std::cout);
+    std::cerr << "generate cells" << std::endl;
+    generateCells(std::cout, i);
+    std::cerr << "saving data" << std::endl;
+    printSCS(std::cout, i);
+    std::cerr << "sample  " << i << " complete!" << std::endl;
+}
+void SingleCell::loadData(std::ostream&out, std::string&input_file_dir) {
     int i = 0;
     int j = 0;
-    std::ifstream file(outputProportionFilename);
+    std::string proportion_fn = input_file_dir + "/proportions.tsv";
+    std::string node_fn = input_file_dir + "/node.tsv";
+    std::ifstream file(proportion_fn);
     if (!file.is_open()) {
         throw std::runtime_error("Could not open node probability file");
     }
@@ -78,9 +91,9 @@ void SingleCell::loadData(std::ostream&out, std::string&outputProportionFilename
     int ii = 0;
     int jj = 0;
 
-    std::ifstream file2(outputNodeFilename);
+    std::ifstream file2(node_fn);
     if (!file2.is_open()) {
-        throw std::runtime_error("Coult not open node file");
+        throw std::runtime_error("Could not open node file");
     }
     std::string line2; 
     getline(file2, line2); //discard header 
@@ -155,7 +168,7 @@ int SingleCell::gaussianDraw(int mean, double errorRate)
     //sample from a binomial distribution
     double stdDev = errorRate*mean;
     std::normal_distribution<double> distribution(mean, stdDev);
-    int draw = distribution(_gen);
+    int draw = distribution(g_rng);
     if (draw < 0) {
         draw = 0;
     }
@@ -309,10 +322,9 @@ int SingleCell::sampleSingleCells(std::ostream&out, int sample)
 {
     float r;
     std::uniform_real_distribution<> myrand(0, 1); //uniform distribution between 0 and 1
-    r = myrand(_gen);
+    r = myrand(g_rng);
 
     int index = 0;
-    float total = 0;
 
     while (r > _ecdf[0][index])
     {
@@ -336,7 +348,7 @@ std::pair<int, int> SingleCell::draw(std::ostream&out, int mut_alleles, int ref_
     std::poisson_distribution<int> readcounts(cov);
     
     //draw total read counts 
-    treads = readcounts(_gen);
+    treads = readcounts(g_rng);
     int a = 0;
 
 
@@ -356,7 +368,7 @@ int SingleCell::binomialdraw(float p, int n)
 {
     //sample from a binomial distribution
     std::binomial_distribution<int> distribution(n, p);
-    int draw = distribution(_gen);
+    int draw = distribution(g_rng);
 
     return draw;
 }

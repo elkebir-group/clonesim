@@ -21,6 +21,7 @@ Phylogeny::Phylogeny()
   , _xbar(_T)
   , _ybar(_T)
   , _clusterToNode()
+  , NodeToIDMap()
   , _nodeToCluster(_T)
   , _mutToSegment()
   , _segmentToMut()
@@ -63,10 +64,21 @@ Phylogeny::Phylogeny(const Phylogeny& other)
   .run();
 
   // update _clusterToNode
+  int i = 0;
+    for (NodeIt v(_T); v != lemon::INVALID; ++v)
+    {
+        NodeToIDMap[v] = i;
+        _clusterToNode[_nodeToCluster[v]] = v;
+        i++;
+    }
   _clusterToNode = NodeVector(_clusterToMut.size(), lemon::INVALID);
+
+  int i = 0;
   for (NodeIt v(_T); v != lemon::INVALID; ++v)
   {
+      NodeToIDMap[v] = i;
     _clusterToNode[_nodeToCluster[v]] = v;
+    i++;
   }
 
   initD(_root);
@@ -412,7 +424,18 @@ void Phylogeny::writeDOT(std::ostream& out) const
   out << "}" << std::endl;
 }
 
+void Phylogeny::writeFiles(std::ostream&out, std::string&outputDir, int nrsamples) const {
+    std::string outputTreeFile = outputDir + "/tree.tsv";
+    std::string outputNodeFile = outputDir + "/node.tsv";
+    std::string outputProportionFile = outputDir + "/proportions.tsv";
+    writeTree(out, outputTreeFile);
+    writeNodeFile(out, outputNodeFile);
+    writeProportionFile(out, outputProportionFile, nrsamples);
+}
+
+/*
 void Phylogeny::writeTree(std::ostream& out, std::string&outputTreeFilename) const {
+
   Digraph::NodeMap<int> nodeToIndex(_T);
   int idx = 0;
   for (NodeIt v(_T); v != lemon::INVALID; ++v) {
@@ -437,6 +460,37 @@ void Phylogeny::writeTree(std::ostream& out, std::string&outputTreeFilename) con
   } else {
     throw std::runtime_error("Please specify output filename for tree");
   }
+}
+     */
+
+void Phylogeny::writeTree(std::ostream& out, std::string&outputTreeFilename) const {
+
+    //out << "root\t" << _T.id(_root); //<< _root;
+    if (outputTreeFilename.compare("") != 0) {
+        std::ofstream myfile;
+        myfile.open(outputTreeFilename);
+        if (!myfile) {
+            throw std::runtime_error("Error in creating output file");
+        } else {
+            myfile << "Parent\tChild\n";
+            for (ArcIt a(_T); a != lemon::INVALID; ++a)
+            {
+                Node s = _T.source(a);
+                int cs = _nodeToCluster[s];
+                Node t = _T.target(a);
+                int ct = _nodeToCluster[t];
+                //myfile << _T.source(a) << "\t" << _T.target(a) << std::endl;
+            }
+
+            for (int i = 0; i < _clusterToNode.size(); i++) {
+                Node v = _clusterToNode[i];
+            }
+
+        }
+        myfile.close();
+    } else {
+        throw std::runtime_error("Please specify output filename for tree");
+    }
 }
 
 void Phylogeny::writeNodeFile(std::ostream&out, std::string&outputNodeFilename) const {
@@ -609,7 +663,8 @@ void Phylogeny::sampleMutations(int n, int l)
 
 
   _clusterD = NodeMatrix (_clusterToMut.size(), NodeVector(0)); 
-  initClusterD(_mrca, 0); 
+  initClusterD(_mrca, 0);
+
 
 
 }
@@ -756,14 +811,19 @@ if (outputProportionFilename.compare("") != 0) {
         {
           nodeId[v] = index++;
         }
-        
+        int nodeCount = 0;
+
+
         for (NodeIt v(_T); v != lemon::INVALID; ++v) {
           myfile << nodeId[v];
+          nodeCount ++;
           for (int sampleIdx = 0; sampleIdx < nrSamples; sampleIdx++) {
             myfile << "\t" << _proportions[v][sampleIdx];
             }
             myfile << "\n";
           }
+
+
     }
           myfile.close();
   } else {
@@ -778,6 +838,7 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
 
   // make sure to sample mrca and descendants of every cluster
   DoubleVector purityVector(nrSamples);
+
 
   for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx)
   {
@@ -794,9 +855,11 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
     //}
   }
 
+  int countNodes = 0;
   // initialize proportions
   for (NodeIt v(_T); v != lemon::INVALID; ++v)
   {
+      countNodes ++;
     _proportions[v] = DoubleVector(nrSamples, 0.);
     if (v == _root)
     {
@@ -849,6 +912,7 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
         sum += gamma[cloneIdx];
       }
 
+
       for (int cloneIdx = 0; cloneIdx < sampleToCluster[sampleIdx].size(); ++cloneIdx)
       {
         int clusterIdx = sampleToCluster[sampleIdx][cloneIdx];
@@ -864,8 +928,8 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
       double prop = gamma[cloneIdx] / sum * purityVector[sampleIdx];
       int a = _clusterD[clusterIdx].size();
       if (_clusterD[clusterIdx].size() > 0) {
-        std::uniform_int_distribution<> unif_cluster(0, _clusterD[clusterIdx].size() - 1);  //Problem: the _clusterD[clusterIdx].size() - 1 is too large
-        Node v = _clusterD[clusterIdx][unif_cluster(g_rng)]; //This line is where the segfault is!! 
+        std::uniform_int_distribution<> unif_cluster(0, _clusterD[clusterIdx].size() - 1);
+        Node v = _clusterD[clusterIdx][unif_cluster(g_rng)];
         _proportions[v][sampleIdx] = prop;
       } 
     }
@@ -875,7 +939,6 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
 void Phylogeny::initClusterD(Node v, int clusterIdx)
 {
 
-
   if (_nodeToCluster[v] != -1)
   {
     clusterIdx = _nodeToCluster[v];
@@ -884,7 +947,7 @@ void Phylogeny::initClusterD(Node v, int clusterIdx)
   else if (clusterIdx != -1) 
   {
     _clusterD[clusterIdx].push_back(v);
-  } 
+  }
 
   for (OutArcIt a(_T, v); a != lemon::INVALID; ++a)
   {

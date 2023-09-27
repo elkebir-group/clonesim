@@ -31,57 +31,28 @@ To remove unsampled nodes, use `-r` in `simulate`:
 dot -Tpdf T.dot > T.pdf
 ```
 
-## inputs
-A list of flags to be set when calling simulate: 
-(note : run ./simulate --help for most up-to date listing and default values)
+## Simulate
 
-Mandatory: 
+Simulate will generate the trees, proportions, and node information.
+
+Inputs: 
 - S : this is the input file of CNA trees.
-- STree: Output filename for tree
-- SNode: Output filename for csv with information about nodes, segments, and mutaitons
-- SProportions: Output filename for csv with information about nodes, segments, and mutaitons
-  
 
 Optional: 
 - kk :  number of truncal segments
-- s : random generator seed
+-  s : random generator seed
 - purity: expected purity
 - minProp: Minimum desired clone proportion
 - n : Number of SNVs
 - m: Number of samples
 - k: Number of segments
 - l: Number of mutation clusters
-- e : Error rate for CNA data
-- dot : Graphviz DOT output filename
-- r : Remove unsampled nodes
-- num_cells: The number of cells to simulate with the single cell generation
-- read_depth: The read_depth for the single cell generation
-- alpha_fp: The sequencing error for single cell generation
-- out_dir: The output directory for single cell generation (Please note: single cell data will not output if this argument is missing)
-- sc : Set to true to generate single cell data
+- dot: graphviz dot filename
+- f : set if you would like to output the tree, node information, and proportion files
+- output_file_dir: the directory you would like to put the output files in
 
-## Example runs: 
-
-To generate single cell data:
-
-  With removing unsampled nodes: 
-  
-    ./simulate -n 50 -m 2 -purity .99 -SNode nodetest4.csv -STree treetest4.csv -SProportions ptest4.c -S cnatrees.txt  -alpha_fp .002 -r -sc -out_dir scdata
-    
-  Without removing unsampled nodes: 
-  
-    ./simulate -n 50 -m 2 -purity .99 -SNode nodetest4.csv -STree treetest4.csv -SProportions ptest4.c -S cnatrees.txt  -alpha_fp .002  -sc -out_dir testingtoseeifthisruns
-    
-
-Not generating single cell data:
-
-  With removing unsampled nodes: 
-  
-    ./simulate -n 50 -m 2 -purity .99 -SNode nodetest4.csv -STree treetest4.csv -SProportions ptest4.c -S cnatrees.txt  -alpha_fp .002 -r
-  
-  Without removing unsampled nodes: 
-  
-    ./simulate -n 50 -m 2 -purity .99 -SNode nodetest4.csv -STree treetest4.csv -SProportions ptest4.c -S cnatrees.txt  -alpha_fp .002 
+ Example run: ./simulate -r -S /build/cnatrees.txt -purity .99 -minProp .05 -kk 2 -f -s 12 -l 7 -k 50 -n 5000 -m 1 -output_file_dir /build/output/intermediate 
+ 
 
 
 

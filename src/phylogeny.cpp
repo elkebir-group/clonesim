@@ -27,6 +27,7 @@ Phylogeny::Phylogeny()
   , _D(_T)
   , _clusterD()
   , _proportions(_T)
+  , _nodeToIndex(_T)
 {
   _trunk[_root] = false;
 }
@@ -50,6 +51,7 @@ Phylogeny::Phylogeny(const Phylogeny& other)
   , _D(_T)
   , _clusterD()
   , _proportions(_T)
+  , _nodeToIndex(_T)
 {
   lemon::digraphCopy(other._T, _T)
   .node(other._root, _root)
@@ -60,20 +62,26 @@ Phylogeny::Phylogeny(const Phylogeny& other)
   .nodeMap(other._ybar, _ybar)
   .nodeMap(other._nodeToCluster, _nodeToCluster)
   .nodeMap(other._proportions, _proportions)
+  .nodeMap(other._nodeToIndex, _nodeToIndex)
+  //.arcMap(other._T.SubArcIt)
   .run();
 
-  // update _clusterToNode
+
   _clusterToNode = NodeVector(_clusterToMut.size(), lemon::INVALID);
+
   for (NodeIt v(_T); v != lemon::INVALID; ++v)
   {
     _clusterToNode[_nodeToCluster[v]] = v;
   }
 
+
+
   initD(_root);
   std::cerr << "_clusterToNode.size\n";
   std::cerr << _clusterToNode.size() << "\n";
   _clusterD = NodeMatrix(_clusterToNode.size(), NodeVector(0));
-  initClusterD(_mrca, 0);
+  //initClusterD(_mrca, 0);
+  initClusterD();
 }
 
 void Phylogeny::addSegment(const CnaTree& cnaTree, bool truncal)
@@ -182,6 +190,20 @@ void Phylogeny::update(const CnaTree& cnaTree, bool truncal,
   {
     _T.erase(node);
   }
+}
+
+void Phylogeny::createIndex(){
+    // Digraph::NodeMap<int> nodeToIndex(_T);
+    int idx = 0;
+    for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+        _nodeToIndex[v] = idx++;
+    }
+    // Iterate over the nodes in the map and print their associated values
+    for ( NodeIt node(_T); node != lemon::INVALID; ++node) {
+        int value = _nodeToIndex[node]; // Access the integer value associated with the node
+        std::cout << "Node: " << value << std::endl;
+    }
+
 }
 
 void Phylogeny::sample(const Digraph& G, const NodePairNodeMap& mapG, const NodeNodeSetMap& toG,
@@ -412,40 +434,46 @@ void Phylogeny::writeDOT(std::ostream& out) const
   out << "}" << std::endl;
 }
 
-void Phylogeny::writeTree(std::ostream& out, std::string&outputTreeFilename) const {
-  Digraph::NodeMap<int> nodeToIndex(_T);
-  int idx = 0;
-  for (NodeIt v(_T); v != lemon::INVALID; ++v) {
-    nodeToIndex[v] = idx++;
-  }
+void Phylogeny::writeFiles(std::ostream&out, std::string&outputDir, int nrsamples) const {
+    std::string outputTreeFile = outputDir + "/tree.tsv";
+    std::string outputNodeFile = outputDir + "/node.tsv";
+    std::string outputProportionFile = outputDir + "/proportions.tsv";
+    writeTree(outputTreeFile);
+    writeNodeFile(out, outputNodeFile);
+    writeProportionFile(out, outputProportionFile, nrsamples);
+}
 
-  //out << "root\t" << _T.id(_root); //<< _root;
-  if (outputTreeFilename.compare("") != 0) {
+void Phylogeny::writeTree(std::string& treefn) const {
+    Digraph::NodeMap<int> nodeToIndex_updated(_T);
+    int idx = 0;
+    for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+        nodeToIndex_updated[v] = idx++;
+    }
     std::ofstream myfile;
-    myfile.open(outputTreeFilename);
+    if (treefn.compare("") != 0) {
+        myfile.open(treefn);
+    }
     if (!myfile) {
-      throw std::runtime_error("Error in creating output file");
-    } else {
-      myfile << "Parent\tChild\n";
-      for (ArcIt a(_T); a != lemon::INVALID; ++a)
-      {
-        myfile << nodeToIndex[_T.source(a)] << "\t" << nodeToIndex[_T.target(a)] << std::endl;
-      }
-
+        throw std::runtime_error("Error in creating output file");
+    }
+    for (ArcIt a(_T); a != lemon::INVALID; ++a)
+    {
+        Node par = _T.source(a);
+        int parent = nodeToIndex_updated[par];
+        Node ch = _T.target(a);
+        int child= nodeToIndex_updated[ch];
+        myfile << parent << "\t" << child << std::endl;
     }
     myfile.close();
-  } else {
-    throw std::runtime_error("Please specify output filename for tree");
-  }
+
 }
 
 void Phylogeny::writeNodeFile(std::ostream&out, std::string&outputNodeFilename) const {
-  Digraph::NodeMap<int> nodeToIndex(_T);
-  int idx = 0;
-  for (NodeIt v(_T); v != lemon::INVALID; ++v) {
-    nodeToIndex[v] = idx++;
-  }
-
+    Digraph::NodeMap<int> nodeToIndex_updated(_T);
+    int idx = 0;
+    for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+        nodeToIndex_updated[v] = idx++;
+    }
   if (outputNodeFilename.compare("") != 0) {
     std::ofstream myfile;
     myfile.open(outputNodeFilename);
@@ -462,27 +490,24 @@ void Phylogeny::writeNodeFile(std::ostream&out, std::string&outputNodeFilename) 
             for (int mutIdx : _segmentToMut[segmentIdx])
             {
               isThereMutation = 1;
-              myfile << nodeToIndex[v] << "\t"; //printing out node
+              myfile << nodeToIndex_updated[v] << "\t"; //printing out node
               myfile << segmentIdx << "\t"; //segment label
               myfile << _cnaTrees[segmentIdx].label(_charState[v][segmentIdx])[1] << "\t"; //x of segment
               myfile << _cnaTrees[segmentIdx].label(_charState[v][segmentIdx])[3] << "\t"; //y of segment
-              myfile << mutIdx << "\t"; //mutationID  
+              myfile << mutIdx << "\t"; //mutationID
               myfile << _xbar[v][mutIdx] << "\t" << _ybar[v][mutIdx] << "\t"; //xbar and ybar of mutation
               myfile << _mutToCluster[mutIdx] << "\n"; //clusterID of mutation
             }
-            if (isThereMutation == 0) { //edge case for if no mutations occur in that segment 
-              myfile << nodeToIndex[v] << "\t"; //printing out node
+            if (isThereMutation == 0) { //edge case for if no mutations occur in that segment
+              myfile << nodeToIndex_updated[v] << "\t"; //printing out node
               myfile << segmentIdx << "\t"; //segment label
               myfile << _cnaTrees[segmentIdx].label(_charState[v][segmentIdx])[1] << "\t"; //x of segment
               myfile << _cnaTrees[segmentIdx].label(_charState[v][segmentIdx])[3] << "\t"; //y of segment
               myfile << "\n";
-              //out << -1 << "\t"; //mutationID  
-              //out << -1 << "\t" << -1 << "\t"; //xhat and yhat of mutation
-              //out << -1 << "\n"; //clusterID of mutation
-            } 
+            }
             isThereMutation = 0;
           }
-        } 
+        }
 
     }
     myfile.close();
@@ -491,10 +516,129 @@ void Phylogeny::writeNodeFile(std::ostream&out, std::string&outputNodeFilename) 
     throw std::runtime_error("Please specify proportion file name");
   }
 
- 
+
 }
 
 
+void Phylogeny::sampleMutations(int n, int l)
+{
+    assert(n >= 1);
+    assert(l >= 1);
+    assert(l <= n);
+
+    const int k = getNrSegments();
+    _clusterToMut = IntSetVector(l);
+
+    // assign mutations to segments
+    std::uniform_int_distribution<> uniform_segments(0, k - 1);
+
+    for (int i = 0; i < n; ++i)
+    {
+        int segmentIdx = uniform_segments(g_rng);
+        _mutToSegment.push_back(segmentIdx);
+        _segmentToMut[segmentIdx].insert(i);
+    }
+
+    // assign mutations
+    std::uniform_int_distribution<> uniform_clusters(0, l - 1);
+
+    for (int i = 0; i < n; ++i)
+    {
+        int clusterIdx = uniform_clusters(g_rng);
+        _mutToCluster.push_back(clusterIdx);
+        _clusterToMut[clusterIdx].insert(i);
+    }
+
+    NodeVector trunkNodes;
+    trunkNodes.push_back(_mrca);
+    for (NodeIt v(_T); v != lemon::INVALID; ++v)
+    {
+        if (_trunk[v] && v != _root)
+        {
+            trunkNodes.push_back(v);
+        }
+    }
+
+    if (trunkNodes.empty())
+    {
+        trunkNodes.push_back(_root);
+    }
+
+    // pick trunk mutation cluster
+    std::uniform_int_distribution<> unif1(0, trunkNodes.size() - 1);
+    int idx = unif1(g_rng);
+    _clusterToNode.push_back(trunkNodes[idx]);
+    _nodeToCluster[trunkNodes[idx]] = 0;
+
+    // sample the remaining l-1 mutation cluster locations
+    NodeVector remainingNodes(_D[_clusterToNode[0]].begin(), _D[_clusterToNode[0]].end());
+    std::shuffle(remainingNodes.begin(), remainingNodes.end(), g_rng);
+    if (!(remainingNodes.size() >= l - 1))
+    {
+        throw std::runtime_error("Invalid number of clusters must be smaller than the number of nodes.");
+    }
+
+    for (int i = 0; i < l - 1; ++i)
+    {
+        _clusterToNode.push_back(remainingNodes[i]);
+        _nodeToCluster[remainingNodes[i]] = i + 1;
+    }
+
+    std::uniform_int_distribution<> unif01(0,1);
+
+    for (NodeIt v(_T); v != lemon::INVALID; ++v)
+    {
+        _xbar[v] = IntVector(n, 0);
+        _ybar[v] = IntVector(n, 0);
+    }
+
+    // sample xbar and ybar for each mutation
+    for (int mutIdx = 0; mutIdx < n; ++mutIdx)
+    {
+        int clusterIdx = _mutToCluster[mutIdx];
+        int segmentIdx = _mutToSegment[mutIdx];
+        Node mutationNode = _clusterToNode[clusterIdx];
+
+        int x = _cnaTrees[segmentIdx].x(_charState[mutationNode][segmentIdx]);
+        int y = _cnaTrees[segmentIdx].y(_charState[mutationNode][segmentIdx]);
+
+        if (x > 0 && y > 0)
+        {
+            bool mut_x = unif01(g_rng) == 1;
+            if (mut_x)
+            {
+                _xbar[mutationNode][mutIdx] = 1;
+                _ybar[mutationNode][mutIdx] = 0;
+                sampleMutation(mutationNode, segmentIdx, mutIdx);
+            }
+            else
+            {
+                _xbar[mutationNode][mutIdx] = 0;
+                _ybar[mutationNode][mutIdx] = 1;
+                sampleMutation(mutationNode, segmentIdx, mutIdx);
+            }
+        }
+        else if (x > 0)
+        {
+            _xbar[mutationNode][mutIdx] = 1;
+            _ybar[mutationNode][mutIdx] = 0;
+            sampleMutation(mutationNode, segmentIdx, mutIdx);
+        }
+        else if (y > 0)
+        {
+            _xbar[mutationNode][mutIdx] = 0;
+            _ybar[mutationNode][mutIdx] = 1;
+            sampleMutation(mutationNode, segmentIdx, mutIdx);
+        }
+    }
+
+
+    _clusterD = NodeMatrix (_clusterToMut.size(), NodeVector(0));
+    initClusterD();
+
+
+}
+/*
 void Phylogeny::sampleMutations(int n, int l)
 {
   assert(n >= 1);
@@ -504,15 +648,6 @@ void Phylogeny::sampleMutations(int n, int l)
   const int k = getNrSegments();
   _clusterToMut = IntSetVector(l);
 
-  // assign mutations to segments
-  std::uniform_int_distribution<> uniform_segments(0, k - 1);
-
-  for (int i = 0; i < n; ++i)
-  {
-    int segmentIdx = uniform_segments(g_rng);
-    _mutToSegment.push_back(segmentIdx);
-    _segmentToMut[segmentIdx].insert(i);
-  }
 
   // assign mutations
   std::uniform_int_distribution<> uniform_clusters(0, l - 1);
@@ -539,6 +674,7 @@ void Phylogeny::sampleMutations(int n, int l)
     trunkNodes.push_back(_root);
   }
 
+
   // pick trunk mutation cluster
   std::uniform_int_distribution<> unif1(0, trunkNodes.size() - 1);
   int idx = unif1(g_rng);
@@ -559,12 +695,49 @@ void Phylogeny::sampleMutations(int n, int l)
     _nodeToCluster[remainingNodes[i]] = i + 1;
   }
 
+  for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+      bool found = false;
+      for (int i = 0; i < k; i++) {
+          int x = _cnaTrees[i].x(_charState[v][i]);
+          int y = _cnaTrees[i].y(_charState[v][i]);
+          if (x > 0 | y > 0) {
+              found = true;
+          }
+      }
+      if (!found) {
+          int b = 5;
+      }
+  }
+
+
+    // assign mutations to segments
+    std::uniform_int_distribution<> uniform_segments(0, k - 1);
+
+    for (int i = 0; i < n; ++i)
+    {
+        bool assigned = false;
+        int segmentIdx;
+        while (!assigned) {
+            segmentIdx = uniform_segments(g_rng);
+            int clusterIdx = _mutToCluster[i];
+            Node mutationNode = _clusterToNode[clusterIdx];
+            int x = _cnaTrees[segmentIdx].x(_charState[mutationNode][segmentIdx]);
+            int y = _cnaTrees[segmentIdx].y(_charState[mutationNode][segmentIdx]);
+            if (x > 0 | y > 0) {
+                assigned = true;
+            }
+        }
+        _mutToSegment.push_back(segmentIdx);
+        _segmentToMut[segmentIdx].insert(i);
+    }
+
   std::uniform_int_distribution<> unif01(0,1);
 
   for (NodeIt v(_T); v != lemon::INVALID; ++v)
   {
     _xbar[v] = IntVector(n, 0);
     _ybar[v] = IntVector(n, 0);
+
   }
 
   // sample xbar and ybar for each mutation
@@ -604,15 +777,20 @@ void Phylogeny::sampleMutations(int n, int l)
       _xbar[mutationNode][mutIdx] = 0;
       _ybar[mutationNode][mutIdx] = 1;
       sampleMutation(mutationNode, segmentIdx, mutIdx);
+    } else {
+        int a = 5; //FLAG
     }
   }
 
 
-  _clusterD = NodeMatrix (_clusterToMut.size(), NodeVector(0)); 
-  initClusterD(_mrca, 0); 
+  _clusterD = NodeMatrix (_clusterToMut.size(), NodeVector(0));
+  //initClusterD(_mrca, 0);
+  initClusterD();
+
 
 
 }
+*/
 
 void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mutIdx)
 {
@@ -743,6 +921,11 @@ void Phylogeny::initD(Node u)
 }
 
 void Phylogeny::writeProportionFile(std::ostream&out, std::string&outputProportionFilename, int nrSamples) const {
+    Digraph::NodeMap<int> nodeToIndex_updated(_T);
+    int idx = 0;
+    for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+        nodeToIndex_updated[v] = idx++;
+    }
 if (outputProportionFilename.compare("") != 0) {
     std::ofstream myfile;
     myfile.open(outputProportionFilename);
@@ -751,19 +934,16 @@ if (outputProportionFilename.compare("") != 0) {
     } else {
         myfile << "Node\tProportionofEachSample\n";
         IntNodeMap nodeId(_T);
-        int index = 0;
-        for (NodeIt v(_T); v != lemon::INVALID; ++v)
-        {
-          nodeId[v] = index++;
-        }
-        
+
         for (NodeIt v(_T); v != lemon::INVALID; ++v) {
-          myfile << nodeId[v];
+          myfile << nodeToIndex_updated[v];
           for (int sampleIdx = 0; sampleIdx < nrSamples; sampleIdx++) {
             myfile << "\t" << _proportions[v][sampleIdx];
             }
             myfile << "\n";
           }
+
+
     }
           myfile.close();
   } else {
@@ -774,10 +954,13 @@ if (outputProportionFilename.compare("") != 0) {
 
 void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minProportion)
 {
+
+
   const int nrClusters = _clusterToNode.size();
 
   // make sure to sample mrca and descendants of every cluster
   DoubleVector purityVector(nrSamples);
+
 
   for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx)
   {
@@ -794,9 +977,11 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
     //}
   }
 
+  int countNodes = 0;
   // initialize proportions
   for (NodeIt v(_T); v != lemon::INVALID; ++v)
   {
+      countNodes ++;
     _proportions[v] = DoubleVector(nrSamples, 0.);
     if (v == _root)
     {
@@ -835,7 +1020,18 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
     double minSampleProportion = std::min(minProportion,
                                           purityVector[sampleIdx] / sampleToCluster[sampleIdx].size());
 
-    DoubleVector gamma(sampleToCluster[sampleIdx].size());
+    NodeSet sampledNodes;
+    for (int cloneIdx = 0; cloneIdx < sampleToCluster[sampleIdx].size(); ++cloneIdx) {
+        if (_clusterD[cloneIdx].size() > 0) {
+            std::uniform_int_distribution<> unif_cluster(0, _clusterD[cloneIdx].size() - 1);
+            Node v = _clusterD[cloneIdx][unif_cluster(g_rng)];
+            sampledNodes.insert(v);
+        }
+    }
+    for (Node v : sampledNodes) {
+        int a = _nodeToIndex[v];
+    }
+    DoubleVector gamma(sampledNodes.size());
 
     bool ok = false;
     double sum;
@@ -843,53 +1039,50 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
     {
       ok = true;
       sum = 0;
-      for (int cloneIdx = 0; cloneIdx < sampleToCluster[sampleIdx].size(); ++cloneIdx)
+      for (int nodeIdx = 0; nodeIdx < sampledNodes.size(); nodeIdx ++)
       {
-        gamma[cloneIdx] = gamma_dist(g_rng);
-        sum += gamma[cloneIdx];
+        gamma[nodeIdx] = gamma_dist(g_rng);
+        sum += gamma[nodeIdx];
       }
 
-      for (int cloneIdx = 0; cloneIdx < sampleToCluster[sampleIdx].size(); ++cloneIdx)
-      {
-        int clusterIdx = sampleToCluster[sampleIdx][cloneIdx];
-        double prop = gamma[cloneIdx] / sum * purityVector[sampleIdx];
-        if (prop < minSampleProportion) ok = false;
+
+      for (int nodeIdx = 0; nodeIdx < sampledNodes.size(); nodeIdx ++) {
+          double prop = gamma[nodeIdx] / sum * purityVector[sampleIdx];
+          if (prop < minSampleProportion) ok = false;
       }
+
     }
 
-    // set clone proportions
-    for (int cloneIdx = 0; cloneIdx < sampleToCluster[sampleIdx].size(); ++cloneIdx)
-    {
-      int clusterIdx = sampleToCluster[sampleIdx][cloneIdx];
-      double prop = gamma[cloneIdx] / sum * purityVector[sampleIdx];
-      int a = _clusterD[clusterIdx].size();
-      if (_clusterD[clusterIdx].size() > 0) {
-        std::uniform_int_distribution<> unif_cluster(0, _clusterD[clusterIdx].size() - 1);  //Problem: the _clusterD[clusterIdx].size() - 1 is too large
-        Node v = _clusterD[clusterIdx][unif_cluster(g_rng)]; //This line is where the segfault is!! 
-        _proportions[v][sampleIdx] = prop;
-      } 
+    int nodeIdx = 0;
+    for (Node n : sampledNodes) {
+        double prop = gamma[nodeIdx] / sum * purityVector[sampleIdx];
+        _proportions[n][sampleIdx] = prop;
+        nodeIdx ++;
     }
+
   }
 }
 
-void Phylogeny::initClusterD(Node v, int clusterIdx)
+
+void Phylogeny::initClusterD()
 {
+    for (int clusterIdx = 0; clusterIdx < _clusterToNode.size(); clusterIdx ++) {
+        initClusterD_helper(_clusterToNode[clusterIdx], clusterIdx);
+    }
+}
 
-
-  if (_nodeToCluster[v] != -1)
-  {
-    clusterIdx = _nodeToCluster[v];
+void Phylogeny::initClusterD_helper(Node v, int clusterIdx) {
+    IntSet mutations = _clusterToMut[clusterIdx];
+    //for (int m : mutations) {
+    //    if (_xbar[v][m] == 0 && _ybar[v][m == 0]) {
+    //        return;
+    //    }
+    //}
     _clusterD[clusterIdx].push_back(v);
-  }
-  else if (clusterIdx != -1) 
-  {
-    _clusterD[clusterIdx].push_back(v);
-  } 
-
-  for (OutArcIt a(_T, v); a != lemon::INVALID; ++a)
-  {
-    initClusterD(_T.target(a), clusterIdx);
-  }
+    for (OutArcIt a(_T, v); a != lemon::INVALID; ++a)
+    {
+        initClusterD_helper(_T.target(a), clusterIdx);
+    }
 }
 
 std::ostream& operator<<(std::ostream& out, const Phylogeny& T)
@@ -1179,6 +1372,17 @@ std::istream& operator>>(std::istream& in, Phylogeny& T)
 Phylogeny Phylogeny::removeUnsampledNodes() const
 {
   Phylogeny newPhylo(*this);
+  for (ArcIt a(newPhylo._T); a != lemon::INVALID; ++a)
+    {
+        Node par = newPhylo._T.source(a);
+        int parent = newPhylo._nodeToIndex[par];
+        Node ch = newPhylo._T.target(a);
+        int child= newPhylo._nodeToIndex[ch];
+    }
+  for (NodeIt v(newPhylo._T); v != lemon::INVALID; ++v)
+    {
+        int b = newPhylo._nodeToIndex[v];
+    }
 
   BoolNodeMap sampled(newPhylo._T, false);
   NodeSet unsampledNodes;
@@ -1193,6 +1397,9 @@ Phylogeny Phylogeny::removeUnsampledNodes() const
     if (!sampled_v)
     {
       unsampledNodes.insert(v);
+    }
+    if (sampled_v) {
+        int b = 5;
     }
   }
 
@@ -1234,7 +1441,16 @@ Phylogeny Phylogeny::removeUnsampledNodes() const
 
   newPhylo.initD(newPhylo._root);
   newPhylo._clusterD = NodeMatrix(newPhylo._clusterToNode.size(), NodeVector(0));
-  newPhylo.initClusterD(newPhylo._mrca, 0);
+  //newPhylo.initClusterD(newPhylo._mrca, 0);
+  newPhylo.initClusterD();
+  for (ArcIt a(newPhylo._T); a != lemon::INVALID; ++a)
+    {
+        Node par = newPhylo._T.source(a);
+        int parent = newPhylo._nodeToIndex[par];
+        Node ch = newPhylo._T.target(a);
+        int child= newPhylo._nodeToIndex[ch];
+    }
+
 
   return newPhylo;
 }

@@ -9,7 +9,6 @@
 #include "cnagraph.h"
 #include "arg_parser.h"
 #include "phylogeny.h"
-#include "singlecellgeneration.h"
 #include <fstream>
 #include <string>
 
@@ -20,20 +19,14 @@ int main(int argc, char** argv)
   int k = 10;
   int kk = 5;
   int l = 5;
-  double cna_error = 0;
   int seed = 0;
   double expPurity = 0.8;
   double minProp = 0.05;
-  int num_cells = 1000;
-  double read_depth = .05;
-  double alpha_fp = .001;
-  bool _sc = false;
+  bool _f = false;
   std::string out_dir = "results";
   std::string dotFilename;
   std::string inputStateTreeFilename;
-  std::string outputTreeFilename = "";
-  std::string outputNodeFilename = "";
-  std::string outputProportionFilename = "";
+  std::string _output_file_dir = "";
   bool removeUnsampledNodes = false;
 
   lemon2::ArgParser ap(argc, argv);
@@ -46,17 +39,10 @@ int main(int argc, char** argv)
     .refOption("m", "Number of samples (default: 2)", m, false)
     .refOption("k", "Number of segments (default: 10)", k, false)
     .refOption("l", "Number of mutation clusters (default: 5)", l, false)
-    .refOption("e", "The error rate for CNA data (default: 0)", cna_error, false)
-    .refOption("STree", "Output fiSlename for tree (default: none)", outputTreeFilename, false)
-    .refOption("SNode", "Output filename for csv with information about nodes, segments, and mutaitons (default: none)", outputNodeFilename, false)
-    .refOption("SProportions", "Output filename for csv with information about nodes, segments, and mutaitons (default: none)", outputProportionFilename, false)
     .refOption("dot", "Graphviz DOT output filename (default: '', no output)", dotFilename, false)
     .refOption("r", "Remove unsampled nodes", removeUnsampledNodes, false)
-    .refOption("num_cells", "The number of cells to simulate with the single cell generation (default: 1000)", num_cells, false)
-    .refOption("read_depth", "The read_depth for the single cell generation (default: .05)", read_depth, false)
-    .refOption("alpha_fp", "The sequencing error for single cell generation (default .001)", alpha_fp, false)
-    .refOption("out_dir", "The output directory for single cell generation (default: results)", out_dir, false)
-    .refOption("sc", "Generate single cell data", _sc, false);
+    .refOption("f", "Whether to output files", _f, false)
+    .refOption("output_file_dir", "The directory for where to write output files", _output_file_dir, false);
 
 
   ap.parse();
@@ -117,8 +103,12 @@ int main(int argc, char** argv)
     {
       phylo.addSegment(T, T.truncal());
     }
+      phylo.createIndex();
+      //std::ofstream outTree("/Users/annahart/CLionProjects/clonesim/build/test/tree.txt");
+      //phylo.writeTree(outTree);
 
     phylo.sampleMutations(n, l);
+
 
     std::cerr << "Clonal tree constructed, sampling proportions..." << std::endl;
 
@@ -126,27 +116,17 @@ int main(int argc, char** argv)
 
     std::cerr << "Finished sampling proportions";
 
-
-
-/*   phylo.writeDOT(std::cout); 
-  phylo.writeTree(std::cout, outputTreeFilename);
-  phylo.writeNodeFile(std::cout, outputNodeFilename);
-  phylo.writeProportionFile(std::cout, outputProportionFilename, m); */
-
-
     std::cerr << "Removing unsampled nodes..." << std::endl;
     if (removeUnsampledNodes)
     {
-//      std::cerr << "Writing clonal tree output files..." << std::endl;
       Phylogeny newPhylo = phylo.removeUnsampledNodes();
       std::cout << newPhylo;
-//      std::cerr << "Writing clonal tree output files..." << std::endl;
-//      newPhylo.writeDOT(std::cout);
-//      newPhylo.writeTree(std::cout, outputTreeFilename);
-//      newPhylo.writeNodeFile(std::cout, outputNodeFilename);
-//      newPhylo.writeProportionFile(std::cout, outputProportionFilename, m);
-//      std::cerr << "Done writing clonal tree files..." << std::endl;
-//
+
+      if (_f) {
+          std::cerr << "Writing clonal tree output files..." << std::endl;
+          newPhylo.writeFiles(std::cout, _output_file_dir, m);
+      }
+
       if (!dotFilename.empty())
       {
         std::ofstream outDOT(dotFilename);
@@ -158,9 +138,12 @@ int main(int argc, char** argv)
     {
 
       phylo.writeDOT(std::cout);
-      phylo.writeTree(std::cout, outputTreeFilename);
-      phylo.writeNodeFile(std::cout, outputNodeFilename);
-      phylo.writeProportionFile(std::cout, outputProportionFilename, m);
+
+      if (_f) {
+          std::cerr << "Writing clonal tree output files..." << std::endl;
+          phylo.writeFiles(std::cout, _output_file_dir, m);
+      }
+
 
       if (!dotFilename.empty())
       {
@@ -171,26 +154,7 @@ int main(int argc, char** argv)
     }
 
 
-    if (_sc == true)
-    {
-      std::cerr << "Generating single cell data..." << std::endl;
-      for (int i = 0; i < m; i++)
-      {
-        std::cerr << "starting sample " << i << std::endl;
-        SingleCell sc(num_cells, read_depth, alpha_fp, out_dir, k, m, g_rng, cna_error);
-        std::cerr << "loading data" << std::endl;
-        sc.loadData(std::cout, outputProportionFilename, outputNodeFilename);
-        std::cerr << "generating ecdf" << std::endl;
-        sc.generateECDF(std::cout, i);
-        std::cerr << "initializing ecdf" << std::endl;
-        sc.initializeSCS(std::cout);
-        std::cerr << "generate cells" << std::endl;
-        sc.generateCells(std::cout, i);
-        std::cerr << "saving data" << std::endl;
-        sc.printSCS(std::cout, i);
-        std::cerr << "sample  " << i << " complete!" << std::endl;
-      }
-    }
+
   }
   catch (std::runtime_error& e)
   {

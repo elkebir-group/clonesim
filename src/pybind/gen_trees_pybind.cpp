@@ -1,6 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include "gencnatrees.h"
+// #include "gencnatrees.h"
+#include "cnagraph.h"
 #include "cnatree.h"
 
 namespace py = pybind11;
@@ -99,7 +100,7 @@ const std::vector<std::vector<std::pair<std::pair<int, int>, std::pair<int, int>
 
 
 
-PYBIND11_MODULE(cnatrees, m) {
+PYBIND11_MODULE(clonelib, m) {
 
     m.def("get_cna_trees", &genCNATrees, "Get CNA trees as a Python list of lists of tuples of int pair tuples (tree edges)");
     m.def("get_genotype_trees", &genGenoTrees, "Get genotype trees as a Python list of lists of tuples of int 4 tuples (tree edges)");

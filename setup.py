@@ -3,17 +3,22 @@ from setuptools import setup, Extension
 from pybind11.setup_helpers import Pybind11Extension
 
 # Modify these paths to match your setup
-lemon_include_path = '/Users/melkebir/lemon/include'
-lemon_library_path = '/Users/melkebir/lemon/lib'
-boost_include_path = '/opt/homebrew/include'
-boost_library_path = '/opt/homebrew/lib'
+path = "/scratch/software"
+boostdir = "boost_1_74_0"
+lemondir = "lemon"
+
+lemon_include_path = f'{path}/{lemondir}/include'
+lemon_library_path = f'{path}/{lemondir}/lib'
+
+boost_include_path = f'{path}/{boostdir}/include'
+boost_library_path = f'{path}/{boostdir}/lib'
 cpp_std_flag = '-std=c++11'
 
 # Define the extension module
 ext_modules = [
     Pybind11Extension(
-        "cnatrees",
-        ["src/gen_trees_pybind.cpp", "src/gencnatrees.cpp", "src/basematrix.cpp", "src/basetree.cpp" ,"src/utils.cpp", "src/genotypetree.cpp", "src/cnatree.cpp"],
+        "clonelib",
+        ["src/pybind/gen_trees_pybind.cpp", "src/cnagraph.cpp", "src/cnatree.cpp", "src/basematrix.cpp", "src/basetree.cpp" ,"src/utils.cpp", "src/genotypetree.cpp"],
         include_dirs=[lemon_include_path, boost_include_path, 'src'],
         library_dirs=[lemon_library_path, boost_library_path, 'src'], 
         extra_compile_args=[cpp_std_flag] #,'-g','-O0', '-DDEBUG'],
@@ -28,7 +33,7 @@ if not os.path.exists(lemon_include_path):
 
 # Use setuptools to build the extension module
 setup(
-    name="cnatrees",
+    name="clonelib",
     ext_modules=ext_modules,
     install_requires=[
         "setuptools",

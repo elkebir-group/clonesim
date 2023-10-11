@@ -972,9 +972,9 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
       sftrabbit::beta_distribution<> betaDist(alpha, beta);
 
       purityVector[sampleIdx] = betaDist(g_rng);
-    } //else {
-      //purityVector[sampleIdx] = 1.;
-    //}
+    } else { //added AH
+      purityVector[sampleIdx] = 1.;
+    }
   }
 
   int countNodes = 0;
@@ -1418,22 +1418,26 @@ Phylogeny Phylogeny::removeUnsampledNodes() const
     }
 
     if (toRemove == lemon::INVALID) break;
-    assert(toRemove != newPhylo._root);
-    Node parent =  newPhylo._T.source(InArcIt(newPhylo._T, toRemove));
-    Node child = lemon::INVALID;
-    if (outDeg == 1)
-    {
-      child = newPhylo._T.target(OutArcIt(newPhylo._T, toRemove));
-      newPhylo._T.addArc(parent, child);
-    }
-    if (newPhylo._trunk[toRemove])
-    {
-      newPhylo._trunkLength--;
-    }
-    if (toRemove == newPhylo._mrca)
-    {
-      assert(outDeg == 1);
-      newPhylo._mrca = child;
+    //assert(toRemove != newPhylo._root); //AH 10/11
+      Node child = lemon::INVALID;
+    if (toRemove == newPhylo._root) {
+        assert(outDeg == 1);
+        child = newPhylo._T.target(OutArcIt(newPhylo._T, toRemove));
+        newPhylo._root = child;
+        newPhylo._trunkLength--;
+    } else {
+        Node parent = newPhylo._T.source(InArcIt(newPhylo._T, toRemove));
+        if (outDeg == 1) {
+            child = newPhylo._T.target(OutArcIt(newPhylo._T, toRemove));
+            newPhylo._T.addArc(parent, child);
+        }
+        if (newPhylo._trunk[toRemove]) {
+            newPhylo._trunkLength--;
+        }
+        if (toRemove == newPhylo._mrca) {
+            assert(outDeg == 1);
+            newPhylo._mrca = child;
+        }
     }
     unsampledNodes.erase(toRemove);
     newPhylo._T.erase(toRemove);

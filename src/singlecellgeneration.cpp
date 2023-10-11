@@ -328,9 +328,15 @@ int SingleCell::sampleSingleCells(std::ostream&out, int sample)
 
     int index = 0;
 
-    while (r > _ecdf[0][index])
+    while (r > _ecdf[0][index] && index < _ecdf[0].size())
     {
         index += 1;
+    }
+
+    if (index >= _ecdf[0].size()) {
+        assert (_ecdf[0][_ecdf[0].size() - 1] > .9999); //allows for .0001 in rounding error
+        index = _ecdf[0].size() - 1;
+
     }
 
     return index;

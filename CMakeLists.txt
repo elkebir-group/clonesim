@@ -113,6 +113,21 @@ set( simulate_hdr
   src/singlecellgeneration.h
 )
 
+set ( generatesinglecells_src
+        src/arg_parser.cpp
+        src/singlecellgeneration.cpp
+        src/utils.cpp
+        src/generatesinglecellsmain.cpp
+        src/generatesinglecellsmain.cpp
+)
+
+set ( generatesinglecells_hdr
+        src/arg_parser.h
+        src/utils.h
+        src/singlecellgeneration.h
+        src/generatesinglecellsmain.cpp
+)
+
 set( LIBLEMON_ROOT "$ENV{HOME}/lemon" CACHE PATH "Additional search directory for lemon library" )
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
@@ -160,3 +175,7 @@ target_link_libraries( simulate ${CommonLibs} )
 
 add_executable( visualizephylo ${visualizephylo_src} ${visualizephylo_hdr} )
 target_link_libraries( visualizephylo ${CommonLibs} )
+
+add_executable( generatesinglecells ${generatesinglecells_src} ${generatesinglecells_hdr}
+        src/generatesinglecellsmain.cpp)
+target_link_libraries( generatesinglecells ${CommonLibs})

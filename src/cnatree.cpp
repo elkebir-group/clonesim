@@ -15,11 +15,7 @@ CnaTree::CnaTree(const CnaTree::CnaEdgeSet& edges)
 {
   std::map<CnaTree::CnaGenotype, int> nodes;
 
-  std::cerr << nodes.size();
-
   _k = edges.size() + 1;
-
-  std::cerr << _k;
 
   // 1. identify vertices
   for (const CnaTree::CnaEdge& edge: edges)

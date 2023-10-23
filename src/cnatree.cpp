@@ -24,8 +24,8 @@ CnaTree::CnaTree(const CnaTree::CnaEdgeSet& edges)
   // 1. identify vertices
   for (const CnaTree::CnaEdge& edge: edges)
   {
-    //nodes[edge.second] = nodes.size() + 1;
-    nodes[edge.second] = nodes.size();
+    int state = nodes.size() + 1;
+    nodes[edge.second] = state;
   }
 
   // 2. identify root

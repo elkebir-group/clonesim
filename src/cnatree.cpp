@@ -41,6 +41,7 @@ CnaTree::CnaTree(const CnaTree::CnaEdgeSet& edges)
   char buf[1024];
   for (const auto& node: nodes)
   {
+    assert(_stateToNode.size() > node.second);
     Node v = _T.addNode();
     _nodeToState[v] = node.second;
     _stateToNode[node.second] = v;

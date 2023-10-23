@@ -14,12 +14,18 @@ CnaTree::CnaTree(const CnaTree::CnaEdgeSet& edges)
     : BaseTree(), _cnState(_T)
 {
   std::map<CnaTree::CnaGenotype, int> nodes;
+
+  std::cerr << nodes.size();
+
   _k = edges.size() + 1;
+
+  std::cerr << _k;
 
   // 1. identify vertices
   for (const CnaTree::CnaEdge& edge: edges)
   {
-    nodes[edge.second] = nodes.size() + 1;
+    //nodes[edge.second] = nodes.size() + 1;
+    nodes[edge.second] = nodes.size();
   }
 
   // 2. identify root

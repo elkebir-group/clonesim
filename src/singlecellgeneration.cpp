@@ -289,6 +289,7 @@ void SingleCell::generateCells(std::ostream&out, int sample){
                 
                 //ASSUMPTION: that the node and mutation are present in the dataset
                 int rowOfMutation = mutationLookUp[clone][j];
+                assert(rowOfMutation >= 0 && rowOfMutation < _nodeInformationRows);
 
                 _totalAlleles[clone][j][0] = _NODE_INFORMATION[rowOfMutation][_xCol];
                 _totalAlleles[clone][j][1] = _NODE_INFORMATION[rowOfMutation][_yCol];
@@ -303,8 +304,6 @@ void SingleCell::generateCells(std::ostream&out, int sample){
 
                 std::pair<int, int> exp = draw(out, _mutAlleles[clone][j][0] +  _mutAlleles[clone][j][1], _refAlleles[clone][j][0] + _refAlleles[clone][j][1]);
 
-
-            
                 _varReads[i][j] = exp.first;
                 _totReads[i][j] = exp.second; 
                 _refReads[i][j] = _totReads[i][j] - _varReads[i][j];

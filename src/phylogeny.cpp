@@ -522,117 +522,110 @@ void Phylogeny::writeNodeFile(std::ostream&out, std::string&outputNodeFilename) 
 
 void Phylogeny::sampleMutations(int n, int l)
 {
-    assert(n >= 1);
-    assert(l >= 1);
-    assert(l <= n);
+    int validSampling = 0;
+    int numberOfTries = 0;
+    while (validSampling == 0) {
+        numberOfTries +=1;
+        assert(n >= 1);
+        assert(l >= 1);
+        assert(l <= n);
+        assert(numberOfTries < 10000);
+        validSampling = 1;
 
-    const int k = getNrSegments();
-    _clusterToMut = IntSetVector(l);
+        const int k = getNrSegments();
+        _clusterToMut = IntSetVector(l);
 
-    // assign mutations to segments
-    std::uniform_int_distribution<> uniform_segments(0, k - 1);
+        // assign mutations to segments
+        std::uniform_int_distribution<> uniform_segments(0, k - 1);
 
-    for (int i = 0; i < n; ++i)
-    {
-        int segmentIdx = uniform_segments(g_rng);
-        _mutToSegment.push_back(segmentIdx);
-        _segmentToMut[segmentIdx].insert(i);
-    }
-
-    // assign mutations
-    std::uniform_int_distribution<> uniform_clusters(0, l - 1);
-
-    for (int i = 0; i < n; ++i)
-    {
-        int clusterIdx = uniform_clusters(g_rng);
-        _mutToCluster.push_back(clusterIdx);
-        _clusterToMut[clusterIdx].insert(i);
-    }
-
-    NodeVector trunkNodes;
-    trunkNodes.push_back(_mrca);
-    for (NodeIt v(_T); v != lemon::INVALID; ++v)
-    {
-        if (_trunk[v] && v != _root)
-        {
-            trunkNodes.push_back(v);
+        for (int i = 0; i < n; ++i) {
+            int segmentIdx = uniform_segments(g_rng);
+            _mutToSegment.push_back(segmentIdx);
+            _segmentToMut[segmentIdx].insert(i);
         }
-    }
 
-    if (trunkNodes.empty())
-    {
-        trunkNodes.push_back(_root);
-    }
+        // assign mutations
+        std::uniform_int_distribution<> uniform_clusters(0, l - 1);
 
-    // pick trunk mutation cluster
-    std::uniform_int_distribution<> unif1(0, trunkNodes.size() - 1);
-    int idx = unif1(g_rng);
-    _clusterToNode.push_back(trunkNodes[idx]);
-    _nodeToCluster[trunkNodes[idx]] = 0;
+        for (int i = 0; i < n; ++i) {
+            int clusterIdx = uniform_clusters(g_rng);
+            _mutToCluster.push_back(clusterIdx);
+            _clusterToMut[clusterIdx].insert(i);
+        }
 
-    // sample the remaining l-1 mutation cluster locations
-    NodeVector remainingNodes(_D[_clusterToNode[0]].begin(), _D[_clusterToNode[0]].end());
-    std::shuffle(remainingNodes.begin(), remainingNodes.end(), g_rng);
-    if (!(remainingNodes.size() >= l - 1))
-    {
-        throw std::runtime_error("Invalid number of clusters must be smaller than the number of nodes.");
-    }
+        NodeVector trunkNodes;
+        trunkNodes.push_back(_mrca);
+        for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+            if (_trunk[v] && v != _root) {
+                trunkNodes.push_back(v);
+            }
+        }
 
-    for (int i = 0; i < l - 1; ++i)
-    {
-        _clusterToNode.push_back(remainingNodes[i]);
-        _nodeToCluster[remainingNodes[i]] = i + 1;
-    }
+        if (trunkNodes.empty()) {
+            trunkNodes.push_back(_root);
+        }
 
-    std::uniform_int_distribution<> unif01(0,1);
+        // pick trunk mutation cluster
+        std::uniform_int_distribution<> unif1(0, trunkNodes.size() - 1);
+        int idx = unif1(g_rng);
+        _clusterToNode.push_back(trunkNodes[idx]);
+        _nodeToCluster[trunkNodes[idx]] = 0;
 
-    for (NodeIt v(_T); v != lemon::INVALID; ++v)
-    {
-        _xbar[v] = IntVector(n, 0);
-        _ybar[v] = IntVector(n, 0);
-    }
+        // sample the remaining l-1 mutation cluster locations
+        NodeVector remainingNodes(_D[_clusterToNode[0]].begin(), _D[_clusterToNode[0]].end());
+        std::shuffle(remainingNodes.begin(), remainingNodes.end(), g_rng);
+        if (!(remainingNodes.size() >= l - 1)) {
+            throw std::runtime_error("Invalid number of clusters must be smaller than the number of nodes.");
+        }
 
-    // sample xbar and ybar for each mutation
-    for (int mutIdx = 0; mutIdx < n; ++mutIdx)
-    {
-        int clusterIdx = _mutToCluster[mutIdx];
-        int segmentIdx = _mutToSegment[mutIdx];
-        Node mutationNode = _clusterToNode[clusterIdx];
+        for (int i = 0; i < l - 1; ++i) {
+            _clusterToNode.push_back(remainingNodes[i]);
+            _nodeToCluster[remainingNodes[i]] = i + 1;
+        }
 
-        int x = _cnaTrees[segmentIdx].x(_charState[mutationNode][segmentIdx]);
-        int y = _cnaTrees[segmentIdx].y(_charState[mutationNode][segmentIdx]);
+        std::uniform_int_distribution<> unif01(0, 1);
 
-        if (x > 0 && y > 0)
-        {
-            bool mut_x = unif01(g_rng) == 1;
-            if (mut_x)
-            {
+        for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+            _xbar[v] = IntVector(n, 0);
+            _ybar[v] = IntVector(n, 0);
+        }
+
+        // sample xbar and ybar for each mutation
+        for (int mutIdx = 0; mutIdx < n; ++mutIdx) {
+            int clusterIdx = _mutToCluster[mutIdx];
+            int segmentIdx = _mutToSegment[mutIdx];
+            Node mutationNode = _clusterToNode[clusterIdx];
+
+            int x = _cnaTrees[segmentIdx].x(_charState[mutationNode][segmentIdx]);
+            int y = _cnaTrees[segmentIdx].y(_charState[mutationNode][segmentIdx]);
+
+            if (!(x > 0 | y > 0)) {
+                validSampling = 0;
+            }
+
+            if (x > 0 && y > 0) {
+                bool mut_x = unif01(g_rng) == 1;
+                if (mut_x) {
+                    _xbar[mutationNode][mutIdx] = 1;
+                    _ybar[mutationNode][mutIdx] = 0;
+                    sampleMutation(mutationNode, segmentIdx, mutIdx);
+                } else {
+                    _xbar[mutationNode][mutIdx] = 0;
+                    _ybar[mutationNode][mutIdx] = 1;
+                    sampleMutation(mutationNode, segmentIdx, mutIdx);
+                }
+            } else if (x > 0) {
                 _xbar[mutationNode][mutIdx] = 1;
                 _ybar[mutationNode][mutIdx] = 0;
                 sampleMutation(mutationNode, segmentIdx, mutIdx);
-            }
-            else
-            {
+            } else if (y > 0) {
                 _xbar[mutationNode][mutIdx] = 0;
                 _ybar[mutationNode][mutIdx] = 1;
                 sampleMutation(mutationNode, segmentIdx, mutIdx);
             }
         }
-        else if (x > 0)
-        {
-            _xbar[mutationNode][mutIdx] = 1;
-            _ybar[mutationNode][mutIdx] = 0;
-            sampleMutation(mutationNode, segmentIdx, mutIdx);
-        }
-        else if (y > 0)
-        {
-            _xbar[mutationNode][mutIdx] = 0;
-            _ybar[mutationNode][mutIdx] = 1;
-            sampleMutation(mutationNode, segmentIdx, mutIdx);
-        }
+
     }
-
-
     _clusterD = NodeMatrix (_clusterToMut.size(), NodeVector(0));
     initClusterD();
 

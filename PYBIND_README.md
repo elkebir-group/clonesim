@@ -1,4 +1,4 @@
-# cnatrees
+# clonelib python interface
 Python package to enumerate CNA and genotype trees from C++ code
 
 Dependencies:
@@ -11,12 +11,12 @@ Dependencies:
 ### Installation instructions:
 modify the lemon and boost lib/include paths in `setup.py` as needed.
 ```
-cd cnatrees
+cd clonesim
 python setup.py install
 ```
 
 ### Available Functions
-Within the `cnatrees` module there are two available functions: `get_cna_trees` and `get_genotype_trees`.
+Within the `clonelib` module there are two available functions: `get_cna_trees` and `get_genotype_trees`.
 
  - `get_cna_trees(L, root_x, root_y)` where `L` is a set of integer tuples representing CNA states (x,y) 
    while `root_x` and `root_y` is the root (root_x, root_y) of the CNA trees.
@@ -25,7 +25,7 @@ Within the `cnatrees` module there are two available functions: `get_cna_trees` 
 ### Example usage
 See `test.py` for example usage. 
 ```
-import cnatrees
+import clonelib
 
 # Example input values
 
@@ -34,7 +34,7 @@ root_x = 1
 root_y = 1  
 
 # Enumerate all possible CNA trees
-result = cnatrees.get_cna_trees(set(L), root_x, root_y)
+result = clonelib.get_cna_trees(set(L), root_x, root_y)
 print(f"Number of candidate CNA trees: {len(result)}")
 for i in range(len(result)):
     trees = cnatrees.get_genotype_trees(result[i])

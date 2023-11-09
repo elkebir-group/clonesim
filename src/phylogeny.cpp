@@ -529,11 +529,18 @@ void Phylogeny::sampleMutations(int n, int l)
         assert(n >= 1);
         assert(l >= 1);
         assert(l <= n);
-        assert(numberOfTries < 10000);
+        assert(numberOfTries < 1000);
         validSampling = 1;
 
         const int k = getNrSegments();
         _clusterToMut = IntSetVector(l);
+        _mutToSegment = IntVector();
+        _segmentToMut = IntSetVector();
+        for (int i = 0; i < k; i++) {
+            _segmentToMut.push_back(IntSet());
+        }
+        _mutToCluster = IntVector();
+        _clusterToNode = NodeVector();
 
         // assign mutations to segments
         std::uniform_int_distribution<> uniform_segments(0, k - 1);

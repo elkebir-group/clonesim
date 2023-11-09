@@ -56,7 +56,8 @@ Optional:
 
 ## Python Interface
 With the aid of pybind11, clonelib has a python interface to certain functionality within clonelib.
-This functionality currently includes:
+This functionality currently includes:  
+
     - enumeration of CNA trees give a set of allele-specific copy number states
     - enumeration of genotype trees given a CNA tree 
 

@@ -529,7 +529,7 @@ void Phylogeny::sampleMutations(int n, int l)
         assert(n >= 1);
         assert(l >= 1);
         assert(l <= n);
-        assert(numberOfTries < 1000);
+        assert(numberOfTries < 100);
         validSampling = 1;
 
         const int k = getNrSegments();

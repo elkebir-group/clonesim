@@ -23,9 +23,6 @@ SingleCell::SingleCell (int numSCS, float read_depth, float alpha_fp, std::strin
     , _SCS_PREV() //Note: the first column is the node ID 
     , _NODE_INFORMATION()
     , _ecdf() //cdf of clonal proportions
-    , _mutAlleles()
-    , _refAlleles ()
-    , _totalAlleles()
     , _segmentCopyNumbers()
     , _segments()
     , _numClones (0)
@@ -48,11 +45,12 @@ void SingleCell::main(std::ostream&out, std::string&input_file_dir, int i) {
     std::cerr << "loading data" << std::endl;
     loadData(std::cout, input_file_dir);
     std::cerr << "generating ecdf" << std::endl;
-    generateECDF(std::cout, i);
+    generateECDF(i);
     std::cerr << "initializing ecdf" << std::endl;
-    initializeSCS(std::cout);
+    initializeSCS();
+    std::cout << "Done intializing." << std::flush;
     std::cerr << "generate cells" << std::endl;
-    generateCells(std::cout, i);
+    generateCells(i);
     std::cerr << "saving data" << std::endl;
     printSCS(std::cout, i);
     std::cerr << "sample  " << i << " complete!" << std::endl;
@@ -61,7 +59,9 @@ void SingleCell::loadData(std::ostream&out, std::string&input_file_dir) {
     int i = 0;
     int j = 0;
     std::string proportion_fn = input_file_dir + "/proportions.tsv";
+    std::cout << proportion_fn << std::endl;
     std::string node_fn = input_file_dir + "/node.tsv";
+    std::cout << node_fn << std::endl;
     std::ifstream file(proportion_fn);
     if (!file.is_open()) {
         throw std::runtime_error("Could not open node probability file");
@@ -179,7 +179,7 @@ int SingleCell::gaussianDraw(int mean, double errorRate)
 // _SCS_PREV[i][j] is the clone proportion of sample i for node j
 // ecdf is the cumulative distribution for the clone proportions of the sample
 // _nodes is the number of nodes/clones in the tree
-void SingleCell::generateECDF(std::ostream&out, int i) 
+void SingleCell::generateECDF(int i) 
 {
     _ecdf.resize(1, std::vector<float>(_numClones, 0.0));
     float cdf = 0.0f;
@@ -196,7 +196,7 @@ void SingleCell::generateECDF(std::ostream&out, int i)
 
 }
 
-void SingleCell::initializeSCS(std::ostream&out)
+void SingleCell::initializeSCS()
 {
 
     int l = 0;
@@ -208,17 +208,19 @@ void SingleCell::initializeSCS(std::ostream&out)
         l = i;
     }
     _numMutations ++; //to account for the fact that there is a 0 mutation
+    std::cout << "Total number of cells: " << _NUMSCS << std::endl;
+    std::cout << "Total number of SNVs: " << _numMutations << std::endl;
     
     //ASSUMPTION: That there are all mutations consecutively (i.e., no missing mutation ids) or that it wouldn't matter if there is
 
-    _varReads.resize(_NUMSCS, std::vector<int>(_numMutations));;
-    _refReads.resize(_NUMSCS, std::vector<int>(_numMutations));;
-    _totReads.resize(_NUMSCS, std::vector<int>(_numMutations));;
-    _refAlleles.resize(_numClones, std::vector<std::vector<int>>(_numMutations, std::vector<int>(2, 0)));; 
-    _mutAlleles.resize(_numClones, std::vector<std::vector<int>>(_numMutations, std::vector<int>(2, 0)));; 
-    _totalAlleles.resize(_numClones, std::vector<std::vector<int>>(_numMutations, std::vector<int>(2, 0)));; 
+    _varReads.resize(_NUMSCS, std::vector<int>(_numMutations));
+    _refReads.resize(_NUMSCS, std::vector<int>(_numMutations));
+    _totReads.resize(_NUMSCS, std::vector<int>(_numMutations));
+    // _refAlleles.resize(_numClones, std::vector<std::vector<int>>(_numMutations, std::vector<int>(2, 0)));
+    // _mutAlleles.resize(_numClones, std::vector<std::vector<int>>(_numMutations, std::vector<int>(2, 0))); 
+    // _totalAlleles.resize(_numClones, std::vector<std::vector<int>>(_numMutations, std::vector<int>(2, 0))); 
     _segments.resize(_numClones, std::vector<int>(_numMutations));
-    _segmentCopyNumbers.resize(_numClones, std::vector<std::vector<int>>(_numSegments, std::vector<int>(2, 0)));;
+    _segmentCopyNumbers.resize(_numClones, std::vector<std::vector<int>>(_numSegments, std::vector<int>(2, 0)));
     for (int i = 0; i < _NUMSCS; i++) 
     {
         for (int j = 0; j < _numMutations; j++) 
@@ -231,39 +233,50 @@ void SingleCell::initializeSCS(std::ostream&out)
     
         }
     }
-
+    std::cout << "done initializing read count matrices" << std::endl;
     for (int a = 0; a < _numClones; a++) {
         for (int b = 0; b < _numMutations; b++) {
-            _refAlleles[a][b][0] = 0;
-            _mutAlleles[a][b][0] = 0;
-            _totalAlleles[a][b][0] = 0;
+            // _refAlleles[a][b][0] = 0;
+            // _mutAlleles[a][b][0] = 0;
+            // _totalAlleles[a][b][0] = 0;
             _segments[a][b] = 0;
-            _refAlleles[a][b][1] = 0;
-            _mutAlleles[a][b][1] = 0;
-            _totalAlleles[a][b][1] = 0;
+            // _refAlleles[a][b][1] = 0;
+            // _mutAlleles[a][b][1] = 0;
+            // _totalAlleles[a][b][1] = 0;
         }
     }
 
-    for (int c = 0; c < _numClones; c++) {
-        for (int d = 0; d < _numSegments; d++) {
-            _segmentCopyNumbers[c][d][0] = 0;
-            _segmentCopyNumbers[c][d][1] = 0;
-        }
-    }
+
+
+    // for (int c = 0; c < _numClones; c++) {
+    //     for (int d = 0; d < _numSegments; d++) {
+    //         _segmentCopyNumbers[c][d][0] = 0;
+    //         _segmentCopyNumbers[c][d][1] = 0;
+    //     }
+    // }
+
+
 
     for (int r = 0; r < _nodeInformationRows; r++) {
         int clone = _NODE_INFORMATION[r][_nodeCol];
         int seg = _NODE_INFORMATION[r][_segmentCol];
         int x = _NODE_INFORMATION[r][_xCol];
         int y = _NODE_INFORMATION[r][_yCol];
+ 
         _segmentCopyNumbers[clone][seg][0] = x;
         _segmentCopyNumbers[clone][seg][1] = y;
+        std::cout << clone << "," << seg <<  std::endl;
     }
+
+    std::cout << "done initializing copy numbers" << std::endl;
+
+
 }
 
 //Generates variant and reference read counts for _NUMSCS single cells 
 //sample is index of the biopsy sample and is used to make sure the correct clonal proporations are used
-void SingleCell::generateCells(std::ostream&out, int sample){
+void SingleCell::generateCells(int sample){
+    std::cout << "generating single cell read counts" << std::endl;
     _cellLabels.resize(_NUMSCS);
     std::uniform_real_distribution<> myrand(0, 1);
 
@@ -274,10 +287,11 @@ void SingleCell::generateCells(std::ostream&out, int sample){
         mutationLookUp[clone][mutation] = r;
     }
 
+
     for(int i=0; i < _NUMSCS; i++){ //i is the cell label
 
         //sample the clone id from the clonal proportions of the sample
-        int clone = sampleSingleCells(std::cout, sample);
+        int clone = sampleSingleCells(sample);
         
         _cellLabels[i] = clone;
 
@@ -291,18 +305,18 @@ void SingleCell::generateCells(std::ostream&out, int sample){
                 int rowOfMutation = mutationLookUp[clone][j];
                 assert(rowOfMutation >= 0 && rowOfMutation < _nodeInformationRows);
 
-                _totalAlleles[clone][j][0] = _NODE_INFORMATION[rowOfMutation][_xCol];
-                _totalAlleles[clone][j][1] = _NODE_INFORMATION[rowOfMutation][_yCol];
+                int x = _NODE_INFORMATION[rowOfMutation][_xCol];
+                int y = _NODE_INFORMATION[rowOfMutation][_yCol];
 
-                _mutAlleles[clone][j][0] = _NODE_INFORMATION[rowOfMutation][_xbarCol];
-                _mutAlleles[clone][j][1] = _NODE_INFORMATION[rowOfMutation][_ybarCol];
+                int x_bar = _NODE_INFORMATION[rowOfMutation][_xbarCol];
+                int y_bar = _NODE_INFORMATION[rowOfMutation][_ybarCol];
 
-                _refAlleles[clone][j][0] = _totalAlleles[clone][j][0] - _mutAlleles[clone][j][0];
-                _refAlleles[clone][j][1] = _totalAlleles[clone][j][1] - _mutAlleles[clone][j][1];
 
+
+                //segment assignment doesn't change by clone, this can be a map  
                 _segments[clone][j] = _NODE_INFORMATION[rowOfMutation][_segmentCol];
 
-                std::pair<int, int> exp = draw(out, _mutAlleles[clone][j][0] +  _mutAlleles[clone][j][1], _refAlleles[clone][j][0] + _refAlleles[clone][j][1]);
+                std::pair<int, int> exp = draw(x_bar + y_bar, x+y);
 
                 _varReads[i][j] = exp.first;
                 _totReads[i][j] = exp.second; 
@@ -319,7 +333,7 @@ void SingleCell::generateCells(std::ostream&out, int sample){
 //sample a clone from the CDF of the clonal proportions for the specified sample
 // FYI, there may be be some existing function to sample directly from the clonal props, but this works. 
 // Feel free to replace if there is 
-int SingleCell::sampleSingleCells(std::ostream&out, int sample)
+int SingleCell::sampleSingleCells(int sample)
 {
     float r;
     std::uniform_real_distribution<> myrand(0, 1); //uniform distribution between 0 and 1
@@ -344,12 +358,12 @@ int SingleCell::sampleSingleCells(std::ostream&out, int sample)
 // _alpha_fp is the per base sequencing error rate
 // _READ_DEPTH is the specified coverage
 
-std::pair<int, int> SingleCell::draw(std::ostream&out, int mut_alleles, int ref_alleles)
+std::pair<int, int> SingleCell::draw(int mut_alleles, int total_cn)
 {
 
  
     int treads;
-    float cov = (_READ_DEPTH/2) * (mut_alleles + ref_alleles);
+    float cov = (_READ_DEPTH/2) * (total_cn);
 
 
     std::poisson_distribution<int> readcounts(cov);
@@ -360,7 +374,7 @@ std::pair<int, int> SingleCell::draw(std::ostream&out, int mut_alleles, int ref_
 
 
     //adjust success prob p for sequencing error
-    float p = 1.0 * (mut_alleles) / (mut_alleles + ref_alleles);
+    float p = 1.0 * (mut_alleles) / (total_cn);
     p = p * (1 - _alpha_fp) + (1 - p) * _alpha_fp/3;
 
 

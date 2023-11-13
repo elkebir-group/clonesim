@@ -12,11 +12,11 @@ public:
     void loadData(std::ostream& out, std::string& input_files) ;
     void addNoiseCNA();
     int gaussianDraw(int mean, double errorRate);
-    void generateECDF(std::ostream& out, int i);
-    void initializeSCS(std::ostream& out);
-    void generateCells(std::ostream& out, int sample);
-    int sampleSingleCells(std::ostream& out, int sample);
-    std::pair<int, int> draw(std::ostream& out, int mut_alleles, int ref_alleles);
+    void generateECDF(int i);
+    void initializeSCS();
+    void generateCells(int sample);
+    int sampleSingleCells(int sample);
+    std::pair<int, int> draw(int mut_alleles, int total_cn);
     int binomialdraw(float p, int n);
     void printSCS(std::ostream& out, int sample);
 
@@ -34,9 +34,6 @@ private:
      std::vector<std::vector<float>> _SCS_PREV; //the proportion of each node in each sample (dimensions: # of nodes x # of samples)
      std::vector<std::vector<int>> _NODE_INFORMATION; 
      std::vector<std::vector<float>> _ecdf; //cdf of clonal proportions (dimensions: 1 x #clones)
-     std::vector<std::vector<std::vector<int>>> _mutAlleles; // Gives mutated copies of allele @ the locus of mutation in that clone. Dimensions: #clones x # muatations x 2
-     std::vector<std::vector<std::vector<int>>> _refAlleles; // Gives non-mutated copies of allele @ the locus of mutation in that clone. Dimensions: #clones x #mutations x 2
-     std::vector<std::vector<std::vector<int>>> _totalAlleles; //Gives total copies of allele @ the locaus of mutation in that clone. Dimensions: #clones x #mutations x 2
      std::vector<std::vector<std::vector<int>>> _segmentCopyNumbers; //The copy number of each segemnt in each clone for x and y. Dimensions: #clones x #segments x 2
      std::vector<std::vector<int>> _segments; //the segment of each mutation in each clone. Dimensions: #clones x #mutations
      std::string outdir;

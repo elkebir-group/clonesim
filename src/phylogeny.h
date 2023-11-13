@@ -136,7 +136,7 @@ private:
   IntSetVector _segmentToMut;
   /// Descendant set
   NodeNodeSetMap _D;
-  /// Cluster descendants
+    /// Cluster descendants
   NodeMatrix _clusterD;
   /// Proportions
   DoubleVectorNodeMap _proportions;

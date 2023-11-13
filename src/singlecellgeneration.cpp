@@ -6,42 +6,24 @@
 #include <cmath>
 #include <unordered_map>
 
-SingleCell::SingleCell (int numSCS, float read_depth, float alpha_fp, std::string outdir, int numSegments, int numSamples, double cna_error)
-    : _NUMSCS(numSCS) //** HYPERPARAMETER
-    , _READ_DEPTH(read_depth) //** HYPERPARAMETER
-    , _numSegments(numSegments)
-    , _numSamples(numSamples)
-    , _cnaError(cna_error)
-    , outdir(outdir)
-    , _outFiles({ {"SPARSE", outdir + "/sparse"}, {"CELLS", outdir + "/cells"}, {"CELLASSIGNMENTS", outdir + "/cellAssignments"}})
-    , _alpha_fp (alpha_fp)
-    //, _seed
-    , _varReads()
-    , _refReads()
-    , _totReads()
-    , _cellLabels()
-    , _SCS_PREV() //Note: the first column is the node ID 
-    , _NODE_INFORMATION()
-    , _ecdf() //cdf of clonal proportions
-    , _segmentCopyNumbers()
-    , _segments()
-    , _numClones (0)
-    , _nodeInformationRows (0)
-    , _nodeInformationColumns (0)
-    , _numMutations (0)
-    , _nodeCol (0)
-    , _segmentCol (1)
-    , _xCol (2)
-    , _yCol (3)
-    , _mCol (4)
-    , _xbarCol (5)
-    , _ybarCol (6)
-    , _clusterIDCol (7)
-    {
+SingleCell::SingleCell(int numSCS, float read_depth, float alpha_fp, std::string outdir, int numSegments,
+                       int numSamples, double cna_error)
+        : _NUMSCS(numSCS) //** HYPERPARAMETER
+        , _READ_DEPTH(read_depth) //** HYPERPARAMETER
+        , _numSegments(numSegments), _numSamples(numSamples), _cnaError(cna_error), outdir(outdir), _outFiles(
+                {{"SPARSE",          outdir + "/sparse"},
+                 {"CELLS",           outdir + "/cells"},
+                 {"CELLASSIGNMENTS", outdir + "/cellAssignments"}}), _alpha_fp(alpha_fp)
+        //, _seed
+        , _varReads(), _refReads(), _totReads(), _cellLabels(), _SCS_PREV() //Note: the first column is the node ID
+        , _NODE_INFORMATION(), _ecdf() //cdf of clonal proportions
+        , _segmentCopyNumbers(), _segments(), _numClones(0), _nodeInformationRows(0), _nodeInformationColumns(0),
+          _numMutations(0), _nodeCol(0), _segmentCol(1), _xCol(2), _yCol(3), _mCol(4), _xbarCol(5), _ybarCol(6),
+          _clusterIDCol(7) {
 
-    }
+}
 
-void SingleCell::main(std::ostream&out, std::string&input_file_dir, int i) {
+void SingleCell::main(std::ostream &out, std::string &input_file_dir, int i) {
     std::cerr << "loading data" << std::endl;
     loadData(std::cout, input_file_dir);
     std::cerr << "generating ecdf" << std::endl;
@@ -55,7 +37,8 @@ void SingleCell::main(std::ostream&out, std::string&input_file_dir, int i) {
     printSCS(std::cout, i);
     std::cerr << "sample  " << i << " complete!" << std::endl;
 }
-void SingleCell::loadData(std::ostream&out, std::string&input_file_dir) {
+
+void SingleCell::loadData(std::ostream &out, std::string &input_file_dir) {
     int i = 0;
     int j = 0;
     std::string proportion_fn = input_file_dir + "/proportions.tsv";
@@ -66,13 +49,13 @@ void SingleCell::loadData(std::ostream&out, std::string&input_file_dir) {
     if (!file.is_open()) {
         throw std::runtime_error("Could not open node probability file");
     }
-    std::string line; 
+    std::string line;
     getline(file, line); //discard header 
     std::string cell;
     float proportion = 0.0;
     while (std::getline(file, line)) {
-        j = 0; 
-        std::vector<float> row; 
+        j = 0;
+        std::vector<float> row;
         std::stringstream linestream(line);
         while (std::getline(linestream, cell, '\t')) {
             proportion = std::stof(cell);
@@ -85,8 +68,8 @@ void SingleCell::loadData(std::ostream&out, std::string&input_file_dir) {
     _numClones = i;
     _numSamples = j - 1;
     file.close();
- 
- /////////////////////////// 
+
+    ///////////////////////////
 
     int ii = 0;
     int jj = 0;
@@ -95,13 +78,13 @@ void SingleCell::loadData(std::ostream&out, std::string&input_file_dir) {
     if (!file2.is_open()) {
         throw std::runtime_error("Could not open node file");
     }
-    std::string line2; 
+    std::string line2;
     getline(file2, line2); //discard header 
     std::string cell2;
     int value = 0;
     while (std::getline(file2, line2)) {
-        jj = 0; 
-        std::vector<int> row2; 
+        jj = 0;
+        std::vector<int> row2;
         std::stringstream linestream(line2);
         while (std::getline(linestream, cell2, '\t')) {
             value = std::stoi(cell2);
@@ -133,7 +116,7 @@ void SingleCell::loadData(std::ostream&out, std::string&input_file_dir) {
         out << "\n";
     } 
  */
-    
+
 
 /* 
      for (int a = 0; a < i; a++) {
@@ -142,7 +125,7 @@ void SingleCell::loadData(std::ostream&out, std::string&input_file_dir) {
         }
         out << "\n"; */
     //}  
-    
+
     /* for (int aa = 0; aa < _nodeInformationRows; aa++) {
         for (int bb = 0; bb < _nodeInformationColumns; bb++) {
             out << _NODE_INFORMATION[aa][bb] << "\t";
@@ -163,10 +146,9 @@ void SingleCell::addNoiseCNA() {
     }
 }
 
-int SingleCell::gaussianDraw(int mean, double errorRate)
-{
+int SingleCell::gaussianDraw(int mean, double errorRate) {
     //sample from a binomial distribution
-    double stdDev = errorRate*mean;
+    double stdDev = errorRate * mean;
     std::normal_distribution<double> distribution(mean, stdDev);
     int draw = distribution(g_rng);
     if (draw < 0) {
@@ -179,15 +161,14 @@ int SingleCell::gaussianDraw(int mean, double errorRate)
 // _SCS_PREV[i][j] is the clone proportion of sample i for node j
 // ecdf is the cumulative distribution for the clone proportions of the sample
 // _nodes is the number of nodes/clones in the tree
-void SingleCell::generateECDF(int i) 
-{
+void SingleCell::generateECDF(int i) {
     _ecdf.resize(1, std::vector<float>(_numClones, 0.0));
     float cdf = 0.0f;
-    for (int j = 0; j < _numClones; ++j)
-    {
-        cdf += _SCS_PREV[j][i+1]; //_SCS_PREV is a transpose of what ecdf should be ; the i+1 is because the first column of _SCS_PREV is the clone number
+    for (int j = 0; j < _numClones; ++j) {
+        cdf += _SCS_PREV[j][i +
+                            1]; //_SCS_PREV is a transpose of what ecdf should be ; the i+1 is because the first column of _SCS_PREV is the clone number
         _ecdf[0][j] = cdf;
- 
+
     }
 
 /*     for (int a = 0; a < _numClones; a++) {
@@ -196,8 +177,7 @@ void SingleCell::generateECDF(int i)
 
 }
 
-void SingleCell::initializeSCS()
-{
+void SingleCell::initializeSCS() {
 
     int l = 0;
     //Getting total_mutations: 
@@ -207,10 +187,10 @@ void SingleCell::initializeSCS()
         }
         l = i;
     }
-    _numMutations ++; //to account for the fact that there is a 0 mutation
+    _numMutations++; //to account for the fact that there is a 0 mutation
     std::cout << "Total number of cells: " << _NUMSCS << std::endl;
     std::cout << "Total number of SNVs: " << _numMutations << std::endl;
-    
+
     //ASSUMPTION: That there are all mutations consecutively (i.e., no missing mutation ids) or that it wouldn't matter if there is
 
     _varReads.resize(_NUMSCS, std::vector<int>(_numMutations));
@@ -221,16 +201,14 @@ void SingleCell::initializeSCS()
     // _totalAlleles.resize(_numClones, std::vector<std::vector<int>>(_numMutations, std::vector<int>(2, 0))); 
     _segments.resize(_numClones, std::vector<int>(_numMutations));
     _segmentCopyNumbers.resize(_numClones, std::vector<std::vector<int>>(_numSegments, std::vector<int>(2, 0)));
-    for (int i = 0; i < _NUMSCS; i++) 
-    {
-        for (int j = 0; j < _numMutations; j++) 
-        {
+    for (int i = 0; i < _NUMSCS; i++) {
+        for (int j = 0; j < _numMutations; j++) {
 
             //_SCS[i][j] = 0;
             _varReads[i][j] = 0;
             _refReads[i][j] = 0;
             _totReads[i][j] = 0;
-    
+
         }
     }
     std::cout << "done initializing read count matrices" << std::endl;
@@ -262,10 +240,10 @@ void SingleCell::initializeSCS()
         int seg = _NODE_INFORMATION[r][_segmentCol];
         int x = _NODE_INFORMATION[r][_xCol];
         int y = _NODE_INFORMATION[r][_yCol];
- 
+
         _segmentCopyNumbers[clone][seg][0] = x;
         _segmentCopyNumbers[clone][seg][1] = y;
-        std::cout << clone << "," << seg <<  std::endl;
+        std::cout << clone << "," << seg << std::endl;
     }
 
     std::cout << "done initializing copy numbers" << std::endl;
@@ -275,57 +253,56 @@ void SingleCell::initializeSCS()
 
 //Generates variant and reference read counts for _NUMSCS single cells 
 //sample is index of the biopsy sample and is used to make sure the correct clonal proporations are used
-void SingleCell::generateCells(int sample){
+void SingleCell::generateCells(int sample) {
     std::cout << "generating single cell read counts" << std::endl;
     _cellLabels.resize(_NUMSCS);
     std::uniform_real_distribution<> myrand(0, 1);
 
-    std::unordered_map<int, std::unordered_map<int, int>> mutationLookUp; 
+    std::unordered_map<int, std::unordered_map<int, int>> mutationLookUp;
     for (int r = 0; r < _nodeInformationRows; r++) {
-        int clone = _NODE_INFORMATION[r][_nodeCol]; 
+        int clone = _NODE_INFORMATION[r][_nodeCol];
         int mutation = _NODE_INFORMATION[r][_mCol];
         mutationLookUp[clone][mutation] = r;
     }
 
 
-    for(int i=0; i < _NUMSCS; i++){ //i is the cell label
+    for (int i = 0; i < _NUMSCS; i++) { //i is the cell label
 
         //sample the clone id from the clonal proportions of the sample
         int clone = sampleSingleCells(sample);
-        
+
         _cellLabels[i] = clone;
 
 
-            // ASSUMPTION: that every clone will have every mutation
+        // ASSUMPTION: that every clone will have every mutation
 
-            for (int j = 0; j < _numMutations; j++)
-            {
-                
-                //ASSUMPTION: that the node and mutation are present in the dataset
-                int rowOfMutation = mutationLookUp[clone][j];
-                assert(rowOfMutation >= 0 && rowOfMutation < _nodeInformationRows);
+        for (int j = 0; j < _numMutations; j++) {
 
-                int x = _NODE_INFORMATION[rowOfMutation][_xCol];
-                int y = _NODE_INFORMATION[rowOfMutation][_yCol];
+            //ASSUMPTION: that the node and mutation are present in the dataset
+            int rowOfMutation = mutationLookUp[clone][j];
+            assert(rowOfMutation >= 0 && rowOfMutation < _nodeInformationRows);
 
-                int x_bar = _NODE_INFORMATION[rowOfMutation][_xbarCol];
-                int y_bar = _NODE_INFORMATION[rowOfMutation][_ybarCol];
+            int x = _NODE_INFORMATION[rowOfMutation][_xCol];
+            int y = _NODE_INFORMATION[rowOfMutation][_yCol];
 
+            int x_bar = _NODE_INFORMATION[rowOfMutation][_xbarCol];
+            int y_bar = _NODE_INFORMATION[rowOfMutation][_ybarCol];
 
 
-                //segment assignment doesn't change by clone, this can be a map  
-                _segments[clone][j] = _NODE_INFORMATION[rowOfMutation][_segmentCol];
 
-                std::pair<int, int> exp = draw(x_bar + y_bar, x+y);
+            //segment assignment doesn't change by clone, this can be a map
+            _segments[clone][j] = _NODE_INFORMATION[rowOfMutation][_segmentCol];
 
-                _varReads[i][j] = exp.first;
-                _totReads[i][j] = exp.second; 
-                _refReads[i][j] = _totReads[i][j] - _varReads[i][j];
+            std::pair<int, int> exp = draw(x_bar + y_bar, x + y);
+
+            _varReads[i][j] = exp.first;
+            _totReads[i][j] = exp.second;
+            _refReads[i][j] = _totReads[i][j] - _varReads[i][j];
 
 
-                //TO DO: Check how code handles this when there are no mutated alleles
+            //TO DO: Check how code handles this when there are no mutated alleles
 
-            }
+        }
     }
 }
 
@@ -333,16 +310,14 @@ void SingleCell::generateCells(int sample){
 //sample a clone from the CDF of the clonal proportions for the specified sample
 // FYI, there may be be some existing function to sample directly from the clonal props, but this works. 
 // Feel free to replace if there is 
-int SingleCell::sampleSingleCells(int sample)
-{
+int SingleCell::sampleSingleCells(int sample) {
     float r;
     std::uniform_real_distribution<> myrand(0, 1); //uniform distribution between 0 and 1
     r = myrand(g_rng);
 
     int index = 0;
 
-    while (r > _ecdf[0][index] && index < _ecdf[0].size())
-    {
+    while (r > _ecdf[0][index] && index < _ecdf[0].size()) {
         index += 1;
     }
 
@@ -358,16 +333,15 @@ int SingleCell::sampleSingleCells(int sample)
 // _alpha_fp is the per base sequencing error rate
 // _READ_DEPTH is the specified coverage
 
-std::pair<int, int> SingleCell::draw(int mut_alleles, int total_cn)
-{
+std::pair<int, int> SingleCell::draw(int mut_alleles, int total_cn) {
 
- 
+
     int treads;
-    float cov = (_READ_DEPTH/2) * (total_cn);
+    float cov = (_READ_DEPTH / 2) * (total_cn);
 
 
     std::poisson_distribution<int> readcounts(cov);
-    
+
     //draw total read counts 
     treads = readcounts(g_rng);
     int a = 0;
@@ -375,7 +349,7 @@ std::pair<int, int> SingleCell::draw(int mut_alleles, int total_cn)
 
     //adjust success prob p for sequencing error
     float p = 1.0 * (mut_alleles) / (total_cn);
-    p = p * (1 - _alpha_fp) + (1 - p) * _alpha_fp/3;
+    p = p * (1 - _alpha_fp) + (1 - p) * _alpha_fp / 3;
 
 
     //draw variant read counts 
@@ -385,8 +359,7 @@ std::pair<int, int> SingleCell::draw(int mut_alleles, int total_cn)
 }
 
 
-int SingleCell::binomialdraw(float p, int n)
-{
+int SingleCell::binomialdraw(float p, int n) {
     //sample from a binomial distribution
     std::binomial_distribution<int> distribution(n, p);
     int draw = distribution(g_rng);
@@ -394,8 +367,7 @@ int SingleCell::binomialdraw(float p, int n)
     return draw;
 }
 
-void SingleCell::printSCS(std::ostream&out, int sample)
-{
+void SingleCell::printSCS(std::ostream &out, int sample) {
 
 
     std::string fname_sparse = _outFiles["SPARSE"] + ".p" + std::to_string(sample);
@@ -404,24 +376,22 @@ void SingleCell::printSCS(std::ostream&out, int sample)
 
 
 
- 
+
     //write a sparse dataframe of the variant and total read counts 
-    if (_outFiles["SPARSE"].compare("") != 0)
-    {
+    if (_outFiles["SPARSE"].compare("") != 0) {
         std::string delim = "\t";
         std::ofstream myFile(fname_sparse);
-        myFile << "segment" << delim << "mutation" << delim << "cell" << delim << "varReads" << delim << "totReads" << std::endl; 
+        myFile << "segment" << delim << "mutation" << delim << "cell" << delim << "varReads" << delim << "totReads"
+               << std::endl;
 
-        for (int j = 0; j < _numMutations; j++)
-        {
-            for (int i = 0; i < _NUMSCS; i++)
-            {
+        for (int j = 0; j < _numMutations; j++) {
+            for (int i = 0; i < _NUMSCS; i++) {
                 int seg = _segments[_cellLabels[i]][j];
-    
-                if (_totReads[i][j] > 0)
-                {
-                    myFile<< seg << delim << j << delim << i << delim  << _varReads[i][j] << delim << _totReads[i][j] << std::endl;
-                
+
+                if (_totReads[i][j] > 0) {
+                    myFile << seg << delim << j << delim << i << delim << _varReads[i][j] << delim << _totReads[i][j]
+                           << std::endl;
+
                 }
             }
         }
@@ -430,19 +400,18 @@ void SingleCell::printSCS(std::ostream&out, int sample)
 
 
     //write the cell labels 
-    if (_outFiles["CELLS"].compare("") != 0)
-    {
+    if (_outFiles["CELLS"].compare("") != 0) {
         std::string delim = ",";
         std::ofstream myFile(fname_cell);
         myFile << "segment" << delim << "cell" << delim << "copiesX" << delim << "copiesY" << std::endl;
         int prevSeg = -1;
         int seg = 0;
-        for (int i = 0; i < _NUMSCS; i++)
-        {
+        for (int i = 0; i < _NUMSCS; i++) {
             int c = _cellLabels[i];
             for (int s = 0; s < _numSegments; s++) {
-                myFile << s << delim << i << delim << _segmentCopyNumbers[c][s][0] << delim << _segmentCopyNumbers[c][s][1] << std::endl;
-                
+                myFile << s << delim << i << delim << _segmentCopyNumbers[c][s][0] << delim
+                       << _segmentCopyNumbers[c][s][1] << std::endl;
+
             }
         }
         myFile.close();

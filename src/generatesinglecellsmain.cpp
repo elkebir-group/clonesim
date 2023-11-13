@@ -3,7 +3,7 @@
 #include "singlecellgeneration.h"
 #include <string>
 
-int main (int argc, char** argv) {
+int main(int argc, char **argv) {
     int numSCS = 1000;
     double read_depth = .05;
     double alpha_fp = .001;
@@ -14,14 +14,15 @@ int main (int argc, char** argv) {
     double cna_error = 0;
 
     lemon2::ArgParser ap(argc, argv);
-    ap.refOption("num_cells", "The number of cells to simulate with the single cell generation (default: 1000)", numSCS, false)
-       .refOption( "read_depth", "The read_depth for the single cell generation (default: .05)", read_depth, false)
-       .refOption( "alpha_fp", "The sequencing error for single cell generation (default .001)", alpha_fp, false)
-       .refOption("out_dir", "The output directory for single cell generation (default: results)", out_dir, false)
-       .refOption("in_dir", "The input directory of files for single cell generation",  in_dir)
-       .refOption("k", "Number of segments (default: 10)", k, false)
-       .refOption("m", "Number of samples (default: 2)", m, false)
-       .refOption("e", "The error rate for CNA data (default: 0)", cna_error, false);
+    ap.refOption("num_cells", "The number of cells to simulate with the single cell generation (default: 1000)", numSCS,
+                 false)
+            .refOption("read_depth", "The read_depth for the single cell generation (default: .05)", read_depth, false)
+            .refOption("alpha_fp", "The sequencing error for single cell generation (default .001)", alpha_fp, false)
+            .refOption("out_dir", "The output directory for single cell generation (default: results)", out_dir, false)
+            .refOption("in_dir", "The input directory of files for single cell generation", in_dir)
+            .refOption("k", "Number of segments (default: 10)", k, false)
+            .refOption("m", "Number of samples (default: 2)", m, false)
+            .refOption("e", "The error rate for CNA data (default: 0)", cna_error, false);
     ap.parse();
 
 
@@ -33,8 +34,7 @@ int main (int argc, char** argv) {
             sc.main(std::cout, in_dir, i);
         }
     }
-    catch (std::runtime_error& e)
-    {
+    catch (std::runtime_error &e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }

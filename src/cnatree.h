@@ -142,6 +142,31 @@ public:
     return _k > 1 && lemon::countOutArcs(_T, _root) == 1;
   }
 
+  bool hasLoss() const
+  {
+      return hasLoss_helper(_root);
+  }
+
+  bool hasLoss_helper(Node source) const {
+      for (OutArcIt a(_T, source); a != lemon::INVALID; ++a)
+      {
+          Node target = _T.target(a);
+          int x_source = _cnState[source]._x;
+          int y_source = _cnState[source]._y;
+          int x_target = _cnState[target]._x;
+          int y_target = _cnState[target]._y;
+          if (x_target < x_source | y_target < y_source) {
+              return true;
+          } else {
+              bool childLoss = hasLoss_helper(target);
+              if (childLoss) {
+                  return true;
+              }
+          }
+      }
+      return false; //if we have arrived this far with no loss
+  }
+
   void enumerateGenotypeTrees(GenotypeTree::GenotypeEdgeSetSet& result) const;
 
   void splitEnumerate(Node u, GenotypeTree::Genotype genotype_u,

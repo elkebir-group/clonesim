@@ -23,6 +23,7 @@ int main(int argc, char** argv)
   double expPurity = 0.8;
   double minProp = 0.05;
   bool _f = false;
+  bool restrictLoss = false;
   std::string out_dir = "results";
   std::string dotFilename;
   std::string inputStateTreeFilename;
@@ -42,7 +43,8 @@ int main(int argc, char** argv)
     .refOption("dot", "Graphviz DOT output filename (default: '', no output)", dotFilename, false)
     .refOption("r", "Remove unsampled nodes", removeUnsampledNodes, false)
     .refOption("f", "Whether to output files", _f, false)
-    .refOption("output_file_dir", "The directory for where to write output files", _output_file_dir, false);
+    .refOption("output_file_dir", "The directory for where to write output files", _output_file_dir, false)
+    .refOption("restrictLoss", "Whether to restrict copy number loss (default false)", restrictLoss, false);
 
 
   ap.parse();
@@ -85,17 +87,20 @@ int main(int argc, char** argv)
     for (int i = 0; i < kk;)
     {
       CnaTree T = CnaGraph::sampleCnaTree();
-      if (T.truncal())
+      if (T.truncal() && (!restrictLoss | !T.hasLoss()))
       {
         cnaTrees.push_back(T);
         ++i;
       }
     }
 
-    for (int i = kk; i < k; ++i)
+    for (int i = kk; i < k;)
     {
       CnaTree T = CnaGraph::sampleCnaTree();
-      cnaTrees.push_back(T);
+      if (!restrictLoss | !T.hasLoss()) {
+          cnaTrees.push_back(T);
+          ++i;
+      }
     }
 
     Phylogeny phylo;

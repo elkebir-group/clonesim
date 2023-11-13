@@ -44,7 +44,7 @@ Phylogeny::Phylogeny(const Phylogeny& other)
   , _clusterToMut(other._clusterToMut)
   , _xbar(_T)
   , _ybar(_T)
-  , _clusterToNode()
+  , _clusterToNode(other._clusterToNode)
   , _nodeToCluster(_T)
   , _mutToSegment(other._mutToSegment)
   , _segmentToMut(other._segmentToMut)
@@ -63,6 +63,9 @@ Phylogeny::Phylogeny(const Phylogeny& other)
   .nodeMap(other._nodeToCluster, _nodeToCluster)
   .nodeMap(other._proportions, _proportions)
   .nodeMap(other._nodeToIndex, _nodeToIndex)
+  .nodeMap(other._D, _D)
+  //.nodeMatrix(other._clusterD, _clusterD)
+  
   //.arcMap(other._T.SubArcIt)
   .run();
 
@@ -926,6 +929,11 @@ void Phylogeny::initClusterD_helper(Node v, int clusterIdx) {
     //        return;
     //    }
     //}
+    std::cerr << clusterIdx;
+    if (v == lemon::INVALID) {
+      std::cerr << "hi this is problem";
+      int b = 5;
+    }
     _clusterD[clusterIdx].push_back(v);
     for (OutArcIt a(_T, v); a != lemon::INVALID; ++a)
     {
@@ -1289,8 +1297,10 @@ Phylogeny Phylogeny::removeUnsampledNodes() const
     }
     //updating nodeToCluster and clusterToNode assignments for newPhylo
     int assignedCluster = newPhylo._nodeToCluster[toRemove];
-    newPhylo._nodeToCluster[child] = assignedCluster;
-    newPhylo._clusterToNode[assignedCluster] = child;
+    if (assignedCluster != -1) {
+      newPhylo._nodeToCluster[child] = assignedCluster;
+      newPhylo._clusterToNode[assignedCluster] = child;
+    }
     unsampledNodes.erase(toRemove);
     newPhylo._T.erase(toRemove);
   }
@@ -1298,7 +1308,7 @@ Phylogeny Phylogeny::removeUnsampledNodes() const
   newPhylo.initD(newPhylo._root);
   newPhylo._clusterD = NodeMatrix(newPhylo._clusterToNode.size(), NodeVector(0));
   //newPhylo.initClusterD(newPhylo._mrca, 0);
-  newPhylo.initClusterD();
+  newPhylo.initClusterD(); 
   for (ArcIt a(newPhylo._T); a != lemon::INVALID; ++a)
     {
         Node par = newPhylo._T.source(a);

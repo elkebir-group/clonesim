@@ -265,7 +265,7 @@ void SingleCell::initializeSCS()
  
         _segmentCopyNumbers[clone][seg][0] = x;
         _segmentCopyNumbers[clone][seg][1] = y;
-        std::cout << clone << "," << seg <<  std::endl;
+
     }
 
     std::cout << "done initializing copy numbers" << std::endl;

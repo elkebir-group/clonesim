@@ -69,19 +69,18 @@ Phylogeny::Phylogeny(const Phylogeny& other)
   //.arcMap(other._T.SubArcIt)
   .run();
 
-
   _clusterToNode = NodeVector(_clusterToMut.size(), lemon::INVALID);
 
   for (NodeIt v(_T); v != lemon::INVALID; ++v)
   {
-    _clusterToNode[_nodeToCluster[v]] = v;
+    if (_nodeToCluster[v] != -1) {
+      _clusterToNode[_nodeToCluster[v]] = v;
+    }
   }
 
 
 
   initD(_root);
-  std::cerr << "_clusterToNode.size\n";
-  std::cerr << _clusterToNode.size() << "\n";
   _clusterD = NodeMatrix(_clusterToNode.size(), NodeVector(0));
   //initClusterD(_mrca, 0);
   initClusterD();
@@ -202,10 +201,10 @@ void Phylogeny::createIndex(){
         _nodeToIndex[v] = idx++;
     }
     // Iterate over the nodes in the map and print their associated values
-    for ( NodeIt node(_T); node != lemon::INVALID; ++node) {
-        int value = _nodeToIndex[node]; // Access the integer value associated with the node
-        std::cout << "Node: " << value << std::endl;
-    }
+   // for ( NodeIt node(_T); node != lemon::INVALID; ++node) {
+    //    int value = _nodeToIndex[node]; // Access the integer value associated with the node
+     //   std::cout << "Node: " << value << std::endl;
+    //}
 
 }
 
@@ -929,11 +928,6 @@ void Phylogeny::initClusterD_helper(Node v, int clusterIdx) {
     //        return;
     //    }
     //}
-    std::cerr << clusterIdx;
-    if (v == lemon::INVALID) {
-      std::cerr << "hi this is problem";
-      int b = 5;
-    }
     _clusterD[clusterIdx].push_back(v);
     for (OutArcIt a(_T, v); a != lemon::INVALID; ++a)
     {

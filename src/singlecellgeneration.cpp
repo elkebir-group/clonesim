@@ -141,6 +141,10 @@ void SingleCell::addNoiseCNA() {
         int ycopy = _NODE_INFORMATION[r][_yCol];
         int newX = gaussianDraw(xcopy, _cnaError);
         int newY = gaussianDraw(ycopy, _cnaError);
+        //std::poisson_distribution<int> poisson_X(xcopy);
+        //std::poisson_distribution<int> poisson_Y(ycopy);
+        //int newX = poisson_X(g_rng);
+        //int newY = poisson_Y(g_rng);
         _NODE_INFORMATION[r][_xCol] = newX;
         _NODE_INFORMATION[r][_yCol] = newY;
     }
@@ -148,11 +152,10 @@ void SingleCell::addNoiseCNA() {
 
 int SingleCell::gaussianDraw(int mean, double errorRate) {
     //sample from a binomial distribution
-    double stdDev = errorRate * mean;
-    std::normal_distribution<double> distribution(mean, stdDev);
+    std::normal_distribution<double> distribution(mean, errorRate);
     int draw = distribution(g_rng);
-    if (draw < 0) {
-        draw = 0;
+    while (draw < 0) { //reject draws which are less than 0
+        draw = distribution(g_rng);
     }
     int copyNumber = std::round(draw);
     return copyNumber;

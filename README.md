@@ -12,7 +12,7 @@ make
 ## usage
 
 ```
-./generatecnatrees > cnatrees.txt
+./generatecnatrees -minTotalCN 1 > cnatrees.txt
 ./simulate -S cnatrees.txt -dot T.dot > T.txt
 dot -Tpdf T.dot > T.pdf
 ```
@@ -47,6 +47,7 @@ Optional:
 - m: Number of samples
 - k: Number of segments
 - l: Number of mutation clusters
+- num_tries: The number of tries for sampling mutations rejection sampling (mutations cannot be assigned to a segment with (0,0) copy number)
 - dot: graphviz dot filename
 - f : set if you would like to output the tree, node information, and proportion files
 - output_file_dir: the directory you would like to put the output files in

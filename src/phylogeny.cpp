@@ -430,15 +430,17 @@ void Phylogeny::writeNodeFile(std::ostream &out, std::string &outputNodeFilename
 }
 
 
-void Phylogeny::sampleMutations(int n, int l) {
+void Phylogeny::sampleMutations(int n, int l, int num_tries) {
     int validSampling = 0;
     int numberOfTries = 0;
     while (validSampling == 0) {
         numberOfTries += 1;
-        assert(n >= 1);
-        assert(l >= 1);
-        assert(l <= n);
-        assert(numberOfTries < 100);
+        if (!(n >=1 & l >= 1 & l <= n)) {
+            throw std::runtime_error("Invalid input: number of mutation clusters must be <= number of SNVs, and both must be >= 1");
+        }
+        if (numberOfTries > num_tries) {
+            throw std::runtime_error("Rejection sampling has exceeded the number of possible tries for sampling mutations. Increase the number of tries or try a different seed.");
+        }
         validSampling = 1;
 
         const int k = getNrSegments();
@@ -554,8 +556,12 @@ void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mut
     int y_u = _cnaTrees[segmentIdx].y(_charState[u][segmentIdx]);
     int xbar_u = _xbar[u][mutIdx];
     int ybar_u = _ybar[u][mutIdx];
-    assert(0 <= xbar_u && xbar_u <= x_u);
-    assert(0 <= ybar_u && ybar_u <= y_u);
+    if (! (0 <= xbar_u && xbar_u <= x_u)) {
+        throw std::runtime_error("Error in sampleMutation: the variant copy number must be less than the segment copy number for x");
+    }
+    if (! (0 <= ybar_u && ybar_u <= y_u)) {
+        throw std::runtime_error("Error in sampleMutation: the variant copy number must be less than the segment copy number for y");
+    }
 
     for (OutArcIt a(_T, u); a != lemon::INVALID; ++a) {
         Node v = _T.target(a);
@@ -584,7 +590,9 @@ void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mut
                 _ybar[v][mutIdx] = 0;
             } else {
                 // deletion
-                assert(x_u > x_v);
+                if (!(x_u > x_v)) {
+                    throw std::runtime_error("Error in samplemutation: x_u must be > x_v");
+                }
                 int non_mut_x_u = x_u - xbar_u;
                 IntVector choices;
                 for (int xbar_v = 0; xbar_v <= x_v; ++xbar_v) {
@@ -600,7 +608,9 @@ void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mut
                 _ybar[v][mutIdx] = 0;
             }
         } else {
-            assert(ybar_u > 0);
+            if (!(ybar_u > 0)) {
+                throw std::runtime_error("Error in samplemutation: ybar_u must be > 0");
+            }
             if (y_u == y_v) {
                 _xbar[v][mutIdx] = xbar_u;
                 _ybar[v][mutIdx] = ybar_u;
@@ -620,7 +630,9 @@ void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mut
                 _ybar[v][mutIdx] = choices[unif(g_rng)];;
             } else {
                 // deletion
-                assert(y_u > y_v);
+                if (!(y_u > y_v)) {
+                    throw std::runtime_error("Error in sampleMutations: y_u must be > y_v");
+                }
                 int non_mut_y_u = y_u - ybar_u;
                 IntVector choices;
                 for (int ybar_v = 0; ybar_v <= y_v; ++ybar_v) {
@@ -1089,7 +1101,9 @@ Phylogeny Phylogeny::removeUnsampledNodes() const {
         //assert(toRemove != newPhylo._root); //AH 10/11
         Node child = lemon::INVALID;
         if (toRemove == newPhylo._root) {
-            assert(outDeg == 1);
+            if (outDeg != 1) {
+                throw std::runtime_error("Error: out degree of root being removed is not 1");
+            }
             child = newPhylo._T.target(OutArcIt(newPhylo._T, toRemove));
             newPhylo._root = child;
             newPhylo._trunkLength--;
@@ -1103,7 +1117,9 @@ Phylogeny Phylogeny::removeUnsampledNodes() const {
                 newPhylo._trunkLength--;
             }
             if (toRemove == newPhylo._mrca) {
-                assert(outDeg == 1);
+                if (outDeg != 1) {
+                    throw std::runtime_error("Error: out degree of mrca being removed is not 1");
+                }
                 newPhylo._mrca = child;
             }
         }

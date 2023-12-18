@@ -25,7 +25,7 @@ public:
   ///
   /// \param n Number of mutations
   /// \param l Number of mutation clusters
-  void sampleMutations(int n, int l);
+  void sampleMutations(int n, int l, int num_tries);
 
   /// Write phylogeny in graphviz format
   ///

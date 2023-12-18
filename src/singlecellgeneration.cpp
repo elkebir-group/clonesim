@@ -284,6 +284,9 @@ void SingleCell::generateCells(int sample) {
 
             //ASSUMPTION: that the node and mutation are present in the dataset
             int rowOfMutation = mutationLookUp[clone][j];
+            if (!(rowOfMutation >= 0 && rowOfMutation < _nodeInformationRows)) {
+                throw std::runtime_error("Error in generateCells: mutation lookup out of bounds");
+            }
             assert(rowOfMutation >= 0 && rowOfMutation < _nodeInformationRows);
 
             int x = _NODE_INFORMATION[rowOfMutation][_xCol];
@@ -326,6 +329,9 @@ int SingleCell::sampleSingleCells(int sample) {
     }
 
     if (index >= _ecdf[0].size()) {
+        if (!(_ecdf[0][_ecdf[0].size() - 1] > .9999)) { //allows for .0001 in rounding error
+            throw std::runtime_error("Error in sampleSingleCells: cumulative probability in ecdf is not 1");
+        }
         assert (_ecdf[0][_ecdf[0].size() - 1] > .9999); //allows for .0001 in rounding error
         index = _ecdf[0].size() - 1;
 

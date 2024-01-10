@@ -4,13 +4,13 @@ project(simcancerphylo)
 set( CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR} ${CMAKE_MODULE_PATH} )
 
 set(visualizephylo_src
-    src/arg_parser.cpp
-    src/visualizephylomain.cpp
-    src/basetree.cpp
-    src/cnatree.cpp
-    src/genotypetree.cpp
-    src/utils.cpp
-    src/phylogeny.cpp
+  src/arg_parser.cpp
+  src/visualizephylomain.cpp
+  src/basetree.cpp
+  src/cnatree.cpp
+  src/genotypetree.cpp
+  src/utils.cpp
+  src/phylogeny.cpp
 )
 
 set(visualizephylo_hdr
@@ -143,7 +143,7 @@ endif(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set( Boost_USE_STATIC_LIBS ON )
 
-find_package( Boost )
+find_package( Boost COMPONENTS random )
 
 MESSAGE( STATUS "found boost:"
   "\nINCLUDE: ${Boost_INCLUDE_DIRS}"

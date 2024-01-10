@@ -11,7 +11,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 #include <iomanip>
-
+#include <boost/random/gamma_distribution.hpp>
 
 GenotypeTree::GenotypeTree(const GenotypeTree::GenotypeEdgeSet& edges)
     : BaseTree(), _cnState(_T)
@@ -383,7 +383,7 @@ void GenotypeTree::sampleMixtureProportions(double f, double purity)
 {
   const int mutState = mutationState();
   const IntSet& D_mutState = D(mutState);
-  std::gamma_distribution<> gamma_dist(1, 1);
+  boost::random::gamma_distribution<> gamma_dist(1, 1);
   
   NodeSet postMutNodes;
   NodeSet preMutNodes;

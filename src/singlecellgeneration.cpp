@@ -10,7 +10,7 @@
 #include <boost/random/poisson_distribution.hpp>
 #include <boost/random/binomial_distribution.hpp>
 
-SingleCell::SingleCell(int numSCS, float read_depth, float alpha_fp, std::string outdir, int numSegments,
+SingleCell::SingleCell(int numSCS, double read_depth, double alpha_fp, std::string outdir, int numSegments,
                        int numSamples, double cna_error)
         : _NUMSCS(numSCS) //** HYPERPARAMETER
         , _READ_DEPTH(read_depth) //** HYPERPARAMETER
@@ -56,10 +56,10 @@ void SingleCell::loadData(std::ostream &out, std::string &input_file_dir) {
     std::string line;
     getline(file, line); //discard header 
     std::string cell;
-    float proportion = 0.0;
+    double proportion = 0.0;
     while (std::getline(file, line)) {
         j = 0;
-        std::vector<float> row;
+        std::vector<double> row;
         std::stringstream linestream(line);
         while (std::getline(linestream, cell, '\t')) {
             proportion = std::stof(cell);
@@ -170,8 +170,8 @@ int SingleCell::gaussianDraw(int mean, double errorRate) {
 // ecdf is the cumulative distribution for the clone proportions of the sample
 // _nodes is the number of nodes/clones in the tree
 void SingleCell::generateECDF(int i) {
-    _ecdf.resize(1, std::vector<float>(_numClones, 0.0));
-    float cdf = 0.0f;
+    _ecdf.resize(1, std::vector<double>(_numClones, 0.0));
+    double cdf = 0.0f;
     for (int j = 0; j < _numClones; ++j) {
         cdf += _SCS_PREV[j][i +
                             1]; //_SCS_PREV is a transpose of what ecdf should be ; the i+1 is because the first column of _SCS_PREV is the clone number
@@ -290,6 +290,9 @@ void SingleCell::generateCells(int sample) {
 
             //ASSUMPTION: that the node and mutation are present in the dataset
             int rowOfMutation = mutationLookUp[clone][j];
+            if (!(rowOfMutation >= 0 && rowOfMutation < _nodeInformationRows)) {
+                throw std::runtime_error("Error in generateCells: mutation lookup out of bounds");
+            }
             assert(rowOfMutation >= 0 && rowOfMutation < _nodeInformationRows);
 
             int x = _NODE_INFORMATION[rowOfMutation][_xCol];
@@ -321,9 +324,11 @@ void SingleCell::generateCells(int sample) {
 // FYI, there may be be some existing function to sample directly from the clonal props, but this works. 
 // Feel free to replace if there is 
 int SingleCell::sampleSingleCells(int sample) {
+
     float r;
     boost::random::uniform_01<> myrand;
 //    std::uniform_real_distribution<> myrand(0, 1); //uniform distribution between 0 and 1
+
     r = myrand(g_rng);
 
     int index = 0;
@@ -333,6 +338,9 @@ int SingleCell::sampleSingleCells(int sample) {
     }
 
     if (index >= _ecdf[0].size()) {
+        if (!(_ecdf[0][_ecdf[0].size() - 1] > .9999)) { //allows for .0001 in rounding error
+            throw std::runtime_error("Error in sampleSingleCells: cumulative probability in ecdf is not 1");
+        }
         assert (_ecdf[0][_ecdf[0].size() - 1] > .9999); //allows for .0001 in rounding error
         index = _ecdf[0].size() - 1;
 
@@ -348,7 +356,7 @@ std::pair<int, int> SingleCell::draw(int mut_alleles, int total_cn) {
 
 
     int treads;
-    float cov = (_READ_DEPTH / 2) * (total_cn);
+    double cov = (_READ_DEPTH / 2) * (total_cn);
 
 
     boost::random::poisson_distribution<> readcounts(cov);
@@ -360,7 +368,7 @@ std::pair<int, int> SingleCell::draw(int mut_alleles, int total_cn) {
 
 
     //adjust success prob p for sequencing error
-    float p = 1.0 * (mut_alleles) / (total_cn);
+    double p = 1.0 * (mut_alleles) / (total_cn);
     p = p * (1 - _alpha_fp) + (1 - p) * _alpha_fp / 3;
 
 
@@ -371,7 +379,7 @@ std::pair<int, int> SingleCell::draw(int mut_alleles, int total_cn) {
 }
 
 
-int SingleCell::binomialdraw(float p, int n) {
+int SingleCell::binomialdraw(double p, int n) {
     //sample from a binomial distribution
     boost::random::binomial_distribution<int> distribution(n, p);
     int draw = distribution(g_rng);

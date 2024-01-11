@@ -19,6 +19,7 @@ int main(int argc, char **argv) {
     int kk = 5;
     int l = 5;
     int seed = 0;
+    int num_tries = 1000;
     double expPurity = 0.8;
     double minProp = 0.05;
     bool _f = false;
@@ -43,6 +44,7 @@ int main(int argc, char **argv) {
             .refOption("r", "Remove unsampled nodes", removeUnsampledNodes, false)
             .refOption("f", "Whether to output files", _f, false)
             .refOption("output_file_dir", "The directory for where to write output files", _output_file_dir, false)
+            .refOption("num_tries", "The number of tries for sampling mutation rejection sampling (default 1000)", num_tries, false)
             .refOption("restrictLoss", "Whether to restrict copy number loss (default false)", restrictLoss, false);
 
 
@@ -99,7 +101,7 @@ int main(int argc, char **argv) {
         //std::ofstream outTree("/Users/annahart/CLionProjects/clonesim/build/test/tree.txt");
         //phylo.writeTree(outTree);
 
-        phylo.sampleMutations(n, l);
+        phylo.sampleMutations(n, l, num_tries);
 
 
         std::cerr << "Clonal tree constructed, sampling proportions..." << std::endl;

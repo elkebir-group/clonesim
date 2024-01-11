@@ -5,6 +5,10 @@
 #include "utils.h"
 #include <cmath>
 #include <unordered_map>
+#include <boost/random/normal_distribution.hpp>
+#include <boost/random/uniform_01.hpp>
+#include <boost/random/poisson_distribution.hpp>
+#include <boost/random/binomial_distribution.hpp>
 
 SingleCell::SingleCell(int numSCS, double read_depth, double alpha_fp, std::string outdir, int numSegments,
                        int numSamples, double cna_error)
@@ -152,7 +156,8 @@ void SingleCell::addNoiseCNA() {
 
 int SingleCell::gaussianDraw(int mean, double errorRate) {
     //sample from a binomial distribution
-    std::normal_distribution<double> distribution(mean, errorRate);
+    boost::random::normal_distribution<double> distribution(mean, errorRate);
+//    boost::math:: variate_generator<boost::mt19937, boost::math::normal_distribution<>> gen_norm(g_rng, distribution);
     int draw = distribution(g_rng);
     while (draw < 0) { //reject draws which are less than 0
         draw = distribution(g_rng);
@@ -260,7 +265,8 @@ void SingleCell::initializeSCS() {
 void SingleCell::generateCells(int sample) {
     std::cout << "generating single cell read counts" << std::endl;
     _cellLabels.resize(_NUMSCS);
-    std::uniform_real_distribution<> myrand(0, 1);
+    boost::random::uniform_01<double> myrand;
+//    std::uniform_real_distribution<> myrand(0, 1);
 
     std::unordered_map<int, std::unordered_map<int, int>> mutationLookUp;
     for (int r = 0; r < _nodeInformationRows; r++) {
@@ -318,8 +324,11 @@ void SingleCell::generateCells(int sample) {
 // FYI, there may be be some existing function to sample directly from the clonal props, but this works. 
 // Feel free to replace if there is 
 int SingleCell::sampleSingleCells(int sample) {
-    double r;
-    std::uniform_real_distribution<> myrand(0, 1); //uniform distribution between 0 and 1
+
+    float r;
+    boost::random::uniform_01<> myrand;
+//    std::uniform_real_distribution<> myrand(0, 1); //uniform distribution between 0 and 1
+
     r = myrand(g_rng);
 
     int index = 0;
@@ -350,7 +359,8 @@ std::pair<int, int> SingleCell::draw(int mut_alleles, int total_cn) {
     double cov = (_READ_DEPTH / 2) * (total_cn);
 
 
-    std::poisson_distribution<int> readcounts(cov);
+    boost::random::poisson_distribution<> readcounts(cov);
+//    std::poisson_distribution<int> readcounts(cov);
 
     //draw total read counts 
     treads = readcounts(g_rng);
@@ -371,7 +381,7 @@ std::pair<int, int> SingleCell::draw(int mut_alleles, int total_cn) {
 
 int SingleCell::binomialdraw(double p, int n) {
     //sample from a binomial distribution
-    std::binomial_distribution<int> distribution(n, p);
+    boost::random::binomial_distribution<int> distribution(n, p);
     int draw = distribution(g_rng);
 
     return draw;

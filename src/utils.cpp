@@ -11,7 +11,7 @@
 double g_thre(1e-6);
 lemon::Tolerance<double> g_tol(g_thre);
 
-std::mt19937 g_rng(0);
+boost::random::mt19937 g_rng(0);
 
 VerbosityLevel g_verbosity = VERBOSE_ESSENTIAL;
 

@@ -21,7 +21,7 @@
 #include <vector>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-#include <random>
+#include <boost/random/mersenne_twister.hpp>
 
 typedef lemon::ListDigraph Digraph;
 DIGRAPH_TYPEDEFS(Digraph);
@@ -112,7 +112,7 @@ extern VerbosityLevel g_verbosity;
 std::istream& getline(std::istream& is, std::string& t);
 
 /// Random number generator
-extern std::mt19937 g_rng;
+extern boost::random::mt19937 g_rng;
 
 extern double g_thre;
 

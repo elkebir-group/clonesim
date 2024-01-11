@@ -93,7 +93,7 @@ int main(int argc, char** argv)
   int maxXY = 2;
   int maxCN = 2;
   int maxTotalCN = 4;
-  int minTotalCN = 0;
+  int minTotalCN = 1;
   int rootX = 1;
   int rootY = 1;
   std::string inputCnaTreeFilename;
@@ -101,7 +101,7 @@ int main(int argc, char** argv)
 
   lemon2::ArgParser ap(argc, argv);
   ap.refOption("maxXY", "Maximum number of maternal/paternal copies (default: 2)", maxXY, false)
-    .refOption("minTotalCN", "Minimum total copy number (default: 0)", minTotalCN, false)
+    .refOption("minTotalCN", "Minimum total copy number (default: 1)", minTotalCN, false)
     .refOption("maxTotalCN", "Maximum total copy number (default: 4)", maxTotalCN, false)
     .refOption("maxCN", "Maximum number of copy number events (default: 2)", maxCN, false)
     .refOption("S", "Input state tree file", inputCnaTreeFilename, false)

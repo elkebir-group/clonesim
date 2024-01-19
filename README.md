@@ -51,6 +51,7 @@ Optional:
 - dot: graphviz dot filename
 - f : set if you would like to output the tree, node information, and proportion files
 - output_file_dir: the directory you would like to put the output files in
+- dirich_param: the alpha argument given to boost::random::gamma_distribution<> in the gamma distribution inside the dirichlet function (default: 1) . The beta argument of boost::random::gamma_distribution<> is 1. 
 
  Example run: ./simulate -r -S /build/cnatrees.txt -purity .99 -minProp .05 -kk 2 -f -s 12 -l 7 -k 50 -n 5000 -m 1 -output_file_dir /build/output/intermediate 
  

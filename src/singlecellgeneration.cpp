@@ -272,7 +272,9 @@ void SingleCell::generateCells(int sample) {
     for (int r = 0; r < _nodeInformationRows; r++) {
         int clone = _NODE_INFORMATION[r][_nodeCol];
         int mutation = _NODE_INFORMATION[r][_mCol];
-        mutationLookUp[clone][mutation] = r;
+        if (mutation != -1) {
+            mutationLookUp[clone][mutation] = r;
+        }
     }
 
 

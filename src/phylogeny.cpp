@@ -417,7 +417,9 @@ void Phylogeny::writeNodeFile(std::ostream &out, std::string &outputNodeFilename
                         myfile << segmentIdx << "\t"; //segment label
                         myfile << _cnaTrees[segmentIdx].label(_charState[v][segmentIdx])[1] << "\t"; //x of segment
                         myfile << _cnaTrees[segmentIdx].label(_charState[v][segmentIdx])[3] << "\t"; //y of segment
-                        myfile << "\n";
+                        myfile << -1 << "\t"; //mutationID
+                        myfile << -1 << "\t" << -1 << "\t"; //xbar and ybar of mutation
+                        myfile << -1 << "\n"; //clusterID of mutation
                     }
                     isThereMutation = 0;
                 }
@@ -543,7 +545,7 @@ void Phylogeny::sampleMutations(int n, int l, int num_tries, double dirich_param
             dir_cdf_clusters[iii] = dir_cdf_clusters[iii-1] + dir_clusters[iii];
         }
 
-        for (int i = 0; i < n; ++i) {
+        for (int i = 0; i < n; i++) {
             int clusterIdx = l-1; //to guard against cumulative prob of .99999
             double val = myrand(g_rng);
             for (int ii = 0; ii < l; ii++) {

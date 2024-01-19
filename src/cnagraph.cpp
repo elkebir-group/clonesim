@@ -4,6 +4,8 @@
 
 #include <lemon/bfs.h>
 #include "cnagraph.h"
+#include <boost/random/gamma_distribution.hpp>
+#include <boost/random/uniform_int.hpp>
 
 CnaGraph::Dictionary CnaGraph::_dict = CnaGraph::Dictionary();
 std::vector<IntPairSet> CnaGraph::_keys;
@@ -643,12 +645,12 @@ void CnaGraph::readCnaTrees(std::istream& in)
 
 CnaTree CnaGraph::sampleCnaTree()
 {
-  std::uniform_int_distribution<> intDist(0, _keys.size() - 1);
+  boost::random::uniform_int_distribution<> intDist(0, _keys.size() - 1);
   int sample = intDist(g_rng);
   const auto& L = _keys[sample];
   assert(_dict.count(L) > 0);
 
-  std::uniform_int_distribution<> intDist2(0, _dict[L].size() - 1);
+  boost::random::uniform_int_distribution<> intDist2(0, _dict[L].size() - 1);
 
   int sample2 = intDist2(g_rng);
   for (const auto& cnaTree : _dict[L])

@@ -4,6 +4,8 @@
 
 #include <lemon/connectivity.h>
 #include "cnatree.h"
+#include <boost/random/gamma_distribution.hpp>
+#include <boost/random/uniform_int.hpp>
 
 CnaTree::CnaTree()
     : BaseTree(), _cnState(_T)

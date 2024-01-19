@@ -4,6 +4,8 @@
 #include <sstream>
 #include <string>
 #include <random>
+#include <boost/random/gamma_distribution.hpp>
+#include <boost/random/uniform_int.hpp>
 
 namespace sftrabbit {
 
@@ -91,7 +93,7 @@ namespace sftrabbit {
       }
 
     private:
-      typedef std::gamma_distribution<result_type> gamma_dist_type;
+      typedef boost::random::gamma_distribution<result_type> gamma_dist_type;
 
       gamma_dist_type a_gamma, b_gamma;
 

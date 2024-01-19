@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <lemon/connectivity.h>
 #include "beta_distribution.hpp"
+#include <boost/random/gamma_distribution.hpp>
+#include <boost/random/uniform_int.hpp>
 
 Phylogeny::Phylogeny()
         : _T(), _root(_T.addNode()), _mrca(lemon::INVALID), _trunk(_T), _cnaTrees(), _charState(_T), _trunkLength(0),
@@ -178,7 +180,8 @@ void Phylogeny::sample(const Digraph &G, const NodePairNodeMap &mapG, const Node
         // pick edge at random
         Arc a = lemon::INVALID;
 
-        int sample = std::uniform_int_distribution<>(1, F.size())(g_rng);
+        int sample = boost::random::uniform_int_distribution<>(1, F.size())(g_rng);
+
         int i = 1;
         for (Arc aa: F) {
             if (i++ == sample) {
@@ -429,8 +432,63 @@ void Phylogeny::writeNodeFile(std::ostream &out, std::string &outputNodeFilename
 
 }
 
+std::vector<float> dirichlet(double dirchparam, int n)
+{
 
-void Phylogeny::sampleMutations(int n, int l, int num_tries) {
+    if (dirchparam > 0)
+    {
+
+        //std::cout << "Threshold: " << _THRESHOLD << std::endl;
+        //std::vector<float> thres;
+
+        //bool accept = false;
+
+        boost::random::gamma_distribution<> gamma_dist(dirchparam, 1); //assuming scaleparam of 1
+
+        //std::gamma_distribution<> gamma_dist(dirchparam, _SCALEPARAM);
+
+        std::vector<float> gamma_sample(n);
+
+            float gamma_sum = 0;
+            for (int i = 0; i < n; i++)
+            {
+
+                gamma_sample[i] = gamma_dist(g_rng);
+
+                gamma_sum += gamma_sample[i];
+            }
+
+            //normalize
+            //  std::cout << "gamma_sample size" << gamma_sample.size() << std::endl;
+            for (int i = 0; i < n; i++)
+            {
+                gamma_sample[i] = gamma_sample[i] / gamma_sum;
+                //  std::cout << "gamma_sample" << i << ":"<< gamma_sample[i] << std::endl;
+            }
+
+           // thres = threshold(gamma_sample);
+           // bool all_good = true;
+           // for(int i=0; i < thres.size(); ++i){
+           //     if(thres[i] <= _THRESHOLD){
+            //        all_good = false;
+             //   }
+            //}
+            //accept = all_good;
+        //}
+        return gamma_sample;
+
+    }
+    else
+    {
+        std::cout <<"uniform sizes"  << std::endl;
+        float fraction = 1.0 / n;
+        std::vector<float> unf(n, fraction);
+        return unf;
+    }
+
+}
+
+void Phylogeny::sampleMutations(int n, int l, int num_tries, double dirich_param) {
     int validSampling = 0;
     int numberOfTries = 0;
     while (validSampling == 0) {
@@ -454,19 +512,45 @@ void Phylogeny::sampleMutations(int n, int l, int num_tries) {
         _clusterToNode = NodeVector();
 
         // assign mutations to segments
-        std::uniform_int_distribution<> uniform_segments(0, k - 1);
+        //std::uniform_int_distribution<> uniform_segments(0, k - 1);
+        boost::random::uniform_01<double> myrand;
+
+        std::vector<float> dir_segments = dirichlet(dirich_param, k);
+        std::vector<float> dir_cdf_segments(k);
+        dir_cdf_segments[0] = dir_segments[0];
+        for (int iii = 1; iii < k; iii++) {
+            dir_cdf_segments[iii] = dir_cdf_segments[iii-1] + dir_segments[iii];
+        }
 
         for (int i = 0; i < n; ++i) {
-            int segmentIdx = uniform_segments(g_rng);
+            int segmentIdx = k-1; //to guard against cumulative prob of .99999
+            double val = myrand(g_rng);
+            for (int ii = 0; ii < k; ii++) {
+                if (val > dir_cdf_segments[ii]) {
+                    segmentIdx = ii;
+                }
+            }
             _mutToSegment.push_back(segmentIdx);
             _segmentToMut[segmentIdx].insert(i);
         }
 
         // assign mutations
-        std::uniform_int_distribution<> uniform_clusters(0, l - 1);
+        //std::uniform_int_distribution<> uniform_clusters(0, l - 1);
+        std::vector<float> dir_clusters = dirichlet(dirich_param, l);
+        std::vector<float> dir_cdf_clusters(l);
+        dir_cdf_clusters[0] = dir_clusters[0];
+        for (int iii = 1; iii < l; iii++) {
+            dir_cdf_clusters[iii] = dir_cdf_clusters[iii-1] + dir_clusters[iii];
+        }
 
         for (int i = 0; i < n; ++i) {
-            int clusterIdx = uniform_clusters(g_rng);
+            int clusterIdx = l-1; //to guard against cumulative prob of .99999
+            double val = myrand(g_rng);
+            for (int ii = 0; ii < l; ii++) {
+                if (val > dir_cdf_clusters[ii]) {
+                    clusterIdx = ii;
+                }
+            }
             _mutToCluster.push_back(clusterIdx);
             _clusterToMut[clusterIdx].insert(i);
         }
@@ -484,7 +568,7 @@ void Phylogeny::sampleMutations(int n, int l, int num_tries) {
         }
 
         // pick trunk mutation cluster
-        std::uniform_int_distribution<> unif1(0, trunkNodes.size() - 1);
+        boost::random::uniform_int_distribution<> unif1(0, trunkNodes.size() - 1);
         int idx = unif1(g_rng);
         _clusterToNode.push_back(trunkNodes[idx]);
         _nodeToCluster[trunkNodes[idx]] = 0;
@@ -501,7 +585,7 @@ void Phylogeny::sampleMutations(int n, int l, int num_tries) {
             _nodeToCluster[remainingNodes[i]] = i + 1;
         }
 
-        std::uniform_int_distribution<> unif01(0, 1);
+        boost::random::uniform_01<double> unif01;
 
         for (NodeIt v(_T); v != lemon::INVALID; ++v) {
             _xbar[v] = IntVector(n, 0);
@@ -585,7 +669,8 @@ void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mut
                     choices.push_back(xbar_u + delta);
                 }
 
-                std::uniform_int_distribution<> unif(0, choices.size() - 1);
+                boost::random::uniform_int_distribution<> unif(0, choices.size() - 1);
+                //std::uniform_int_distribution<> unif(0, choices.size() - 1);
                 _xbar[v][mutIdx] = choices[unif(g_rng)];
                 _ybar[v][mutIdx] = 0;
             } else {
@@ -603,7 +688,7 @@ void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mut
                     choices.push_back(xbar_v);
                 }
 
-                std::uniform_int_distribution<> unif(0, choices.size() - 1);
+                boost::random::uniform_int_distribution<> unif(0, choices.size() - 1);
                 _xbar[v][mutIdx] = choices[unif(g_rng)];
                 _ybar[v][mutIdx] = 0;
             }
@@ -625,7 +710,7 @@ void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mut
                     choices.push_back(ybar_u + delta);
                 }
 
-                std::uniform_int_distribution<> unif(0, choices.size() - 1);
+                boost::random::uniform_int_distribution<> unif(0, choices.size() - 1);
                 _xbar[v][mutIdx] = 0;
                 _ybar[v][mutIdx] = choices[unif(g_rng)];;
             } else {
@@ -642,7 +727,7 @@ void Phylogeny::sampleMutation(const Node u, const int segmentIdx, const int mut
                     choices.push_back(ybar_v);
                 }
 
-                std::uniform_int_distribution<> unif(0, choices.size() - 1);
+                boost::random::uniform_int_distribution<> unif(0, choices.size() - 1);
                 _xbar[v][mutIdx] = 0;
                 _ybar[v][mutIdx] = choices[unif(g_rng)];;
             }
@@ -734,7 +819,7 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
         sampleVector[i] = i;
     }
 
-    std::uniform_int_distribution<> unif_samples(1, nrSamples);
+    boost::random::uniform_int_distribution<> unif_samples(1, nrSamples);
 
     IntMatrix sampleToCluster(nrSamples);
     for (int clusterIdx = 0; clusterIdx < nrClusters; ++clusterIdx) {
@@ -747,7 +832,7 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
         }
     }
 
-    std::gamma_distribution<> gamma_dist(1, 1);
+    boost::random::gamma_distribution<> gamma_dist(1, 1);
     for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx) {
         double minSampleProportion = std::min(minProportion,
                                               purityVector[sampleIdx] / sampleToCluster[sampleIdx].size());
@@ -755,7 +840,7 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
         NodeSet sampledNodes;
         for (int cloneIdx = 0; cloneIdx < sampleToCluster[sampleIdx].size(); ++cloneIdx) {
             if (_clusterD[cloneIdx].size() > 0) {
-                std::uniform_int_distribution<> unif_cluster(0, _clusterD[cloneIdx].size() - 1);
+                boost::random::uniform_int_distribution<> unif_cluster(0, _clusterD[cloneIdx].size() - 1);
                 Node v = _clusterD[cloneIdx][unif_cluster(g_rng)];
                 sampledNodes.insert(v);
             }

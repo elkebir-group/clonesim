@@ -37,7 +37,7 @@ root_y = 1
 result = clonelib.get_cna_trees(set(L), root_x, root_y)
 print(f"Number of candidate CNA trees: {len(result)}")
 for i in range(len(result)):
-    trees = cnatrees.get_genotype_trees(result[i])
+    trees = clonelib.get_genotype_trees(result[i])
     print(f"# of genotype trees: {len(trees)}")
     for j,tree in enumerate(trees):
         print(f"\CNA tree: {i} Genotype tree {j}")

@@ -3,7 +3,7 @@ from setuptools import setup, Extension
 from pybind11.setup_helpers import Pybind11Extension
 
 # Modify these paths to match your setup
-path = "/scratch/software"
+path = "/Users/annahart/Documents"
 boostdir = "boost_1_74_0"
 lemondir = "lemon"
 

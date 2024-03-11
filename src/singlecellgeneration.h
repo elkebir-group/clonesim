@@ -10,11 +10,11 @@ public:
     SingleCell(int numSCS, double read_depth, double alpha_fp, std::string outdir, int numSegments, int numSamples,
                double cna_error);
 
-    void main(std::ostream &out, std::string &input_file_dir, int sample);
+    void main(std::ostream &out, std::string &input_file_dir, int sample, double cnaErrorRate, double plsOne, double minusOne, double copyNeutral);
 
-    void loadData(std::ostream &out, std::string &input_files);
+    void loadData(std::ostream &out, std::string &input_files, double cnaErrorRate, double plsOne, double minusOne, double copyNeutral);
 
-    void addNoiseCNA();
+    void addNoiseCNA(double cnaErrorRate, double plsOne, double minusOne, double copyNeutral);
 
     int gaussianDraw(int mean, double errorRate);
 

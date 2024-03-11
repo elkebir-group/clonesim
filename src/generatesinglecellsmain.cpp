@@ -12,6 +12,9 @@ int main(int argc, char **argv) {
     int k = 10; //number of segments
     int m = 2; //number of samples
     double cna_error = 0;
+    double plsOne = .3;
+    double minusOne = .3;
+    double copyNeutral = .4;
 
     lemon2::ArgParser ap(argc, argv);
     ap.refOption("num_cells", "The number of cells to simulate with the single cell generation (default: 1000)", numSCS,
@@ -23,6 +26,10 @@ int main(int argc, char **argv) {
             .refOption("k", "Number of segments (default: 10)", k, false)
             .refOption("m", "Number of samples (default: 2)", m, false)
             .refOption("e", "The error rate for CNA data (default: 0)", cna_error, false);
+            .refOption("add", "The proportion of copy number errors adding an allele (default .3"), plsOne, false);
+            .refOption("sub", "The proportion of copy number errors subtracting an allele (default .3"), minusOne, false);
+            .refOption("neutral", "The proportion of copy number errors that are total copy number neutral (default .4"), copyNeutral, false);
+
     ap.parse();
 
 
@@ -31,7 +38,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < m; i++) {
             std::cerr << "starting sample " << i << std::endl;
             SingleCell sc(numSCS, read_depth, alpha_fp, out_dir, k, m, cna_error);
-            sc.main(std::cout, in_dir, i);
+            sc.main(std::cout, in_dir, i, cna_error, plsOne, minusOne, copyNeutral);
         }
     }
     catch (std::runtime_error &e) {

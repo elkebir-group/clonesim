@@ -25,10 +25,10 @@ int main(int argc, char **argv) {
             .refOption("in_dir", "The input directory of files for single cell generation", in_dir)
             .refOption("k", "Number of segments (default: 10)", k, false)
             .refOption("m", "Number of samples (default: 2)", m, false)
-            .refOption("e", "The error rate for CNA data (default: 0)", cna_error, false);
-            .refOption("add", "The proportion of copy number errors adding an allele (default .3"), plsOne, false);
-            .refOption("sub", "The proportion of copy number errors subtracting an allele (default .3"), minusOne, false);
-            .refOption("neutral", "The proportion of copy number errors that are total copy number neutral (default .4"), copyNeutral, false);
+            .refOption("e", "The error rate for CNA data (default: 0)", cna_error, false)
+            .refOption("add", "The proportion of copy number errors adding an allele (default .3)", plsOne, false)
+            .refOption("sub", "The proportion of copy number errors subtracting an allele (default .3)", minusOne, false)
+            .refOption("neutral", "The proportion of copy number errors that are total copy number neutral (default .4)", copyNeutral, false);
 
     ap.parse();
 

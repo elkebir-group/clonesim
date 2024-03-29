@@ -111,7 +111,7 @@ void SingleCell::loadData(std::ostream &out, std::string &input_file_dir, double
 
     out << "\n\n*******\n\n"; */
 
-    addNoiseCNA(cnaErrorRate, plsOne, minusOne, copyNeutral);
+    // addNoiseCNA(cnaErrorRate, plsOne, minusOne, copyNeutral);
 
 /*     for (int aa = 0; aa < _nodeInformationRows; aa++) {
         for (int bb = 0; bb < _nodeInformationColumns; bb++) {
@@ -139,85 +139,85 @@ void SingleCell::loadData(std::ostream &out, std::string &input_file_dir, double
     return;
 }
 
-void SingleCell::addNoiseCNA(double cnaErrorRate, double plsOne, double minusOne, double copyNeutral) {
-    for (int r = 0; r < _nodeInformationRows; r++) {
-        int xcopy = _NODE_INFORMATION[r][_xCol];
-        int ycopy = _NODE_INFORMATION[r][_yCol];
-        int newx = xcopy;
-        int newy = ycopy;
-        float r;
-        boost::random::uniform_01<> myrand;
-//    std::uniform_real_distribution<> myrand(0, 1); //uniform distribution between 0 and 1
+// void SingleCell::addNoiseCNA(double cnaErrorRate, double plsOne, double minusOne, double copyNeutral) {
+//     for (int r = 0; r < _nodeInformationRows; r++) {
+//         int xcopy = _NODE_INFORMATION[r][_xCol];
+//         int ycopy = _NODE_INFORMATION[r][_yCol];
+//         int newx = xcopy;
+//         int newy = ycopy;
+//         float r;
+//         boost::random::uniform_01<> myrand;
+// //    std::uniform_real_distribution<> myrand(0, 1); //uniform distribution between 0 and 1
 
-        //generate possible states
-        // +1/-1, -1/+1, +2/-2, -2/+2,
-        int terminate = 0
-        int resample = 0
-        while (terminate == 0 || resample = 1) {
-        //flip coin for error
-            r = myrand(g_rng);
-            int numCNAError = 0;
-            if (r < cnaErrorRate) {
-                resample = 0;
-                //introduce cnaError
-                r2 = myrand(g_rng);
-                r3 = myrand(g_rng);
-                if (r2 < plusOne) { //add copy to 1 allele
-                    if (r3 < .5) {
-                        xcopy += 1;
-                    } else {
-                        ycopy += 1;
-                    }
-                } else if (r2 < plusOne + minusOne) { //subtract copy from 1 allele
-                    if (r3 < .5) {
-                        if (xcopy >= 1) {
-                            xcopy -= 1;
-                        } else {
-                            resample = 1;
-                        }
-                    } else {
-                        if (ycopy >= 1) {
-                            ycopy -= 1;
-                        } else {
-                            resample = 1;
-                        }
-                    }
-                } else { //total number copy stays same (+1/-1)
-                    if (r3 < .5) {
-                        if (xcopy >= 1) {
-                            xcopy -= 1;
-                            ycopy += 1;
-                        } else {
-                            resample = 1;
-                        }
-                    } else {
-                        if (ycopy >= 1) {
-                            ycopy -= 1;
-                            xcopy += 1;
-                        } else {
-                            resample = 1;
-                        }
-                    }
-                }
-            } else {
-                terminate = 1;
-            }
-        }
-
-
-        //introduce error type (if permitted)
+//         //generate possible states
+//         // +1/-1, -1/+1, +2/-2, -2/+2,
+//         int terminate = 0
+//         int resample = 0
+//         while (terminate == 0 || resample = 1) {
+//         //flip coin for error
+//             r = myrand(g_rng);
+//             int numCNAError = 0;
+//             if (r < cnaErrorRate) {
+//                 resample = 0;
+//                 //introduce cnaError
+//                 r2 = myrand(g_rng);
+//                 r3 = myrand(g_rng);
+//                 if (r2 < plusOne) { //add copy to 1 allele
+//                     if (r3 < .5) {
+//                         xcopy += 1;
+//                     } else {
+//                         ycopy += 1;
+//                     }
+//                 } else if (r2 < plusOne + minusOne) { //subtract copy from 1 allele
+//                     if (r3 < .5) {
+//                         if (xcopy >= 1) {
+//                             xcopy -= 1;
+//                         } else {
+//                             resample = 1;
+//                         }
+//                     } else {
+//                         if (ycopy >= 1) {
+//                             ycopy -= 1;
+//                         } else {
+//                             resample = 1;
+//                         }
+//                     }
+//                 } else { //total number copy stays same (+1/-1)
+//                     if (r3 < .5) {
+//                         if (xcopy >= 1) {
+//                             xcopy -= 1;
+//                             ycopy += 1;
+//                         } else {
+//                             resample = 1;
+//                         }
+//                     } else {
+//                         if (ycopy >= 1) {
+//                             ycopy -= 1;
+//                             xcopy += 1;
+//                         } else {
+//                             resample = 1;
+//                         }
+//                     }
+//                 }
+//             } else {
+//                 terminate = 1;
+//             }
+//         }
 
 
-        int newX = gaussianDraw(xcopy, _cnaError);
-        int newY = gaussianDraw(ycopy, _cnaError);
-        //std::poisson_distribution<int> poisson_X(xcopy);
-        //std::poisson_distribution<int> poisson_Y(ycopy);
-        //int newX = poisson_X(g_rng);
-        //int newY = poisson_Y(g_rng);
-        _NODE_INFORMATION[r][_xCol] = newX;
-        _NODE_INFORMATION[r][_yCol] = newY;
-    }
-}
+//         //introduce error type (if permitted)
+
+
+//         int newX = gaussianDraw(xcopy, _cnaError);
+//         int newY = gaussianDraw(ycopy, _cnaError);
+//         //std::poisson_distribution<int> poisson_X(xcopy);
+//         //std::poisson_distribution<int> poisson_Y(ycopy);
+//         //int newX = poisson_X(g_rng);
+//         //int newY = poisson_Y(g_rng);
+//         _NODE_INFORMATION[r][_xCol] = newX;
+//         _NODE_INFORMATION[r][_yCol] = newY;
+//     }
+// }
 
 int SingleCell::gaussianDraw(int mean, double errorRate) {
     //sample from a binomial distribution

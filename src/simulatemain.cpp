@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
     int l = 5;
     int seed = 0;
     int num_tries = 1000;
-    double dirich_param = 1;
+    double dirich_param = 2;
     double expPurity = 0.8;
     double minProp = 0.05;
     bool _f = false;
@@ -35,12 +35,12 @@ int main(int argc, char **argv) {
 
     lemon2::ArgParser ap(argc, argv);
     ap.refOption("S", "Input CNA tree file", inputStateTreeFilename, true)
-            .refOption("dirich_param", "dirichlet parameter (default 1)", dirich_param, false)
+            .refOption("dirich_param", "symmetric concentration parameter for Dirichlet distribution (default 2)", dirich_param, false)
             .refOption("kk", "Number of truncal segments (default: 5)", kk, false)
             .refOption("s", "Random number generator seed (default: 0)", seed, false)
             .refOption("purity", "Expected purity (default: 0.8)", expPurity, false)
             .refOption("minProp", "Minimum desired clone proportion (default: 0.05)", minProp, false)
-            .refOption("threshold", "Minimum desired clone proportion (default: 0.05)", threshold, false)
+            .refOption("threshold", "Minimum threshold for SNV proportions (default: 0.05)", threshold, false)
             .refOption("n", "Number of SNVs (default: 1000)", n, false)
             .refOption("m", "Number of samples (default: 2)", m, false)
             .refOption("k", "Number of segments (default: 10)", k, false)

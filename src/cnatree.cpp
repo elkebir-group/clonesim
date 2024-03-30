@@ -587,6 +587,7 @@ void CnaTree::splitEnumerate(Node u, GenotypeTree::Genotype genotype_u,
               if (ybar_v > genotype_u._ybar) continue;
 
               genotype_v._ybar = ybar_v;
+              currentTree.insert(GenotypeTree::GenotypeEdge(genotype_u, genotype_v));
               splitEnumerate(v, genotype_v, children_v, mutationNode, mut_x, preMutation, currentTree, result);
               if (ybar_v < genotype_v._y)
               {

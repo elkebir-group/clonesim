@@ -35,25 +35,59 @@ dot -Tpdf T.dot > T.pdf
 
 Simulate will generate the trees, proportions, and node information.
 
-Inputs: 
-- S : this is the input file of CNA trees.
+```
+Usage:
+  ./simulate [--help|-h|-help] -S str [-dirich_param num] [-dot str] [-f]
+     [-k int] [-kk int] [-l int] [-m int] [-minProp num] [-n int]
+     [-num_tries int] [-output_file_dir str] [-purity num] [-r]
+     [-restrictLoss] [-s int] [-threshold num] [-uniform]
+Where:
+  --help|-h|-help
+     Print a short help message
+  -S str
+     Input CNA tree file
+  -dirich_param num
+     symmetric concentration parameter for Dirichlet distribution (default 2)
+  -dot str
+     Graphviz DOT output filename (default: '', no output)
+  -f
+     Whether to output files
+  -k int
+     Number of segments (default: 10)
+  -kk int
+     Number of truncal segments (default: 5)
+  -l int
+     Number of mutation clusters (default: 5)
+  -m int
+     Number of samples (default: 2)
+  -minProp num
+     Minimum desired clone proportion (default: 0.05)
+  -n int
+     Number of SNVs (default: 1000)
+  -num_tries int
+     The number of tries for sampling mutation rejection sampling (default 1000)
+  -output_file_dir str
+     The directory for where to write output files
+  -purity num
+     Expected purity (default: 0.8)
+  -r
+     Remove unsampled nodes
+  -restrictLoss
+     Whether to restrict copy number loss (default false)
+  -s int
+     Random number generator seed (default: 0)
+  -threshold num
+     Minimum threshold for SNV proportions (default: 0.05)
+  -uniform
+     use uniform distribution for mutation assignments
+```
 
-Optional: 
-- kk :  number of truncal segments
--  s : random generator seed
-- purity: expected purity
-- minProp: Minimum desired clone proportion
-- n : Number of SNVs
-- m: Number of samples
-- k: Number of segments
-- l: Number of mutation clusters
-- num_tries: The number of tries for sampling mutations rejection sampling (mutations cannot be assigned to a segment with (0,0) copy number)
-- dot: graphviz dot filename
-- f : set if you would like to output the tree, node information, and proportion files
-- output_file_dir: the directory you would like to put the output files in
-- dirich_param: the alpha argument given to boost::random::gamma_distribution<> in the gamma distribution inside the dirichlet function (default: 1) . The beta argument of boost::random::gamma_distribution<> is 1. 
 
- Example run: ./simulate -r -S /build/cnatrees.txt -purity .99 -minProp .05 -kk 2 -f -s 12 -l 7 -k 50 -n 5000 -m 1 -output_file_dir /build/output/intermediate 
+
+ Example run:
+ ```
+  ./simulate -r -S /build/cnatrees.txt -purity .99 -minProp .05 -kk 2 -f -s 12 -l 7 -k 50 -n 5000 -m 1 -output_file_dir /build/output/intermediate 
+```
  
 
 ## Python Interface

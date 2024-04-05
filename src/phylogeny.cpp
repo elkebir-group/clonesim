@@ -9,6 +9,7 @@
 #include "beta_distribution.hpp"
 #include <boost/random/gamma_distribution.hpp>
 #include <boost/random/uniform_int.hpp>
+#include <boost/random/discrete_distribution.hpp>
 
 Phylogeny::Phylogeny()
         : _T(), _root(_T.addNode()), _mrca(lemon::INVALID), _trunk(_T), _cnaTrees(), _charState(_T), _trunkLength(0),
@@ -434,23 +435,20 @@ void Phylogeny::writeNodeFile(std::ostream &out, std::string &outputNodeFilename
 
 }
 
-std::vector<float> dirichlet(double dirchparam, int n)
+std::vector<float> dirichlet(double dirchparam, int n, bool uniform, float threshold)
 {
 
-    if (dirchparam > 0)
+    if (!uniform)
     {
 
-        //std::cout << "Threshold: " << _THRESHOLD << std::endl;
-        //std::vector<float> thres;
-
-        //bool accept = false;
-
         boost::random::gamma_distribution<> gamma_dist(dirchparam, 1); //assuming scaleparam of 1
-
-        //std::gamma_distribution<> gamma_dist(dirchparam, _SCALEPARAM);
-
         std::vector<float> gamma_sample(n);
 
+        //sample from the dirichelet distribution until all values are above the threshold
+        bool accept = true;
+        do{
+            
+            accept = true;
             float gamma_sum = 0;
             for (int i = 0; i < n; i++)
             {
@@ -460,23 +458,20 @@ std::vector<float> dirichlet(double dirchparam, int n)
                 gamma_sum += gamma_sample[i];
             }
 
-            //normalize
-            //  std::cout << "gamma_sample size" << gamma_sample.size() << std::endl;
             for (int i = 0; i < n; i++)
             {
                 gamma_sample[i] = gamma_sample[i] / gamma_sum;
-                //  std::cout << "gamma_sample" << i << ":"<< gamma_sample[i] << std::endl;
+                if(gamma_sample[i] < threshold){
+                    accept = false;
+                }
+      
             }
 
-           // thres = threshold(gamma_sample);
-           // bool all_good = true;
-           // for(int i=0; i < thres.size(); ++i){
-           //     if(thres[i] <= _THRESHOLD){
-            //        all_good = false;
-             //   }
             //}
-            //accept = all_good;
-        //}
+        }while(!accept);
+
+
+   
         return gamma_sample;
 
     }
@@ -490,7 +485,7 @@ std::vector<float> dirichlet(double dirchparam, int n)
 
 }
 
-void Phylogeny::sampleMutations(int n, int l, int num_tries, double dirich_param) {
+void Phylogeny::sampleMutations(int n, int l, int num_tries, double dirich_param, bool uniform, double threshold) {
     int validSampling = 0;
     int numberOfTries = 0;
     while (validSampling == 0) {
@@ -517,45 +512,29 @@ void Phylogeny::sampleMutations(int n, int l, int num_tries, double dirich_param
         //std::uniform_int_distribution<> uniform_segments(0, k - 1);
         boost::random::uniform_01<double> myrand;
 
-        std::vector<float> dir_segments = dirichlet(dirich_param, k);
-        std::vector<float> dir_cdf_segments(k);
-        dir_cdf_segments[0] = dir_segments[0];
-        for (int iii = 1; iii < k; iii++) {
-            dir_cdf_segments[iii] = dir_cdf_segments[iii-1] + dir_segments[iii];
-        }
 
-        for (int i = 0; i < n; ++i) {
-            int segmentIdx = k-1; //to guard against cumulative prob of .99999
-            double val = myrand(g_rng);
-            for (int ii = 0; ii < k; ii++) {
-                if (val > dir_cdf_segments[ii]) {
-                    segmentIdx = ii;
-                }
-            }
+        //sample from a weighted discrete distribution to assign each mutation i to one of k segments
+        std::vector<float> dir_segments = dirichlet(dirich_param, k, uniform, threshold);
+        boost::random::discrete_distribution<int> segment_dist(dir_segments.begin(), dir_segments.end());
+
+        //sample from a weighted discrete distribution to assign each mutation i to one of l clusters
+        std::vector<float> dir_clusters = dirichlet(dirich_param, l, uniform, threshold);
+        
+        //sort the weights in descending order
+        std::sort(dir_clusters.rbegin(), dir_clusters.rend());
+        boost::random::discrete_distribution<int> cluster_dist(dir_clusters.begin(), dir_clusters.end());
+        
+        for(int i=0; i < n; ++i)
+        {
+            int segmentIdx = segment_dist(g_rng);
             _mutToSegment.push_back(segmentIdx);
             _segmentToMut[segmentIdx].insert(i);
-        }
 
-        // assign mutations
-        //std::uniform_int_distribution<> uniform_clusters(0, l - 1);
-        std::vector<float> dir_clusters = dirichlet(dirich_param, l);
-        std::vector<float> dir_cdf_clusters(l);
-        dir_cdf_clusters[0] = dir_clusters[0];
-        for (int iii = 1; iii < l; iii++) {
-            dir_cdf_clusters[iii] = dir_cdf_clusters[iii-1] + dir_clusters[iii];
-        }
-
-        for (int i = 0; i < n; i++) {
-            int clusterIdx = l-1; //to guard against cumulative prob of .99999
-            double val = myrand(g_rng);
-            for (int ii = 0; ii < l; ii++) {
-                if (val > dir_cdf_clusters[ii]) {
-                    clusterIdx = ii;
-                }
-            }
+            int clusterIdx = cluster_dist(g_rng);
             _mutToCluster.push_back(clusterIdx);
             _clusterToMut[clusterIdx].insert(i);
         }
+
 
         NodeVector trunkNodes;
         trunkNodes.push_back(_mrca);

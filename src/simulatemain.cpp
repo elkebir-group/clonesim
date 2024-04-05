@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
     int l = 5;
     int seed = 0;
     int num_tries = 1000;
-    double dirich_param = 1;
+    double dirich_param = 2;
     double expPurity = 0.8;
     double minProp = 0.05;
     bool _f = false;
@@ -30,14 +30,17 @@ int main(int argc, char **argv) {
     std::string inputStateTreeFilename;
     std::string _output_file_dir = "";
     bool removeUnsampledNodes = false;
+    bool uniform = false;
+    double threshold = 0.05;
 
     lemon2::ArgParser ap(argc, argv);
     ap.refOption("S", "Input CNA tree file", inputStateTreeFilename, true)
-            .refOption("dirich_param", "dirichlet parameter (default 1)", dirich_param, false)
+            .refOption("dirich_param", "symmetric concentration parameter for Dirichlet distribution (default 2)", dirich_param, false)
             .refOption("kk", "Number of truncal segments (default: 5)", kk, false)
             .refOption("s", "Random number generator seed (default: 0)", seed, false)
             .refOption("purity", "Expected purity (default: 0.8)", expPurity, false)
             .refOption("minProp", "Minimum desired clone proportion (default: 0.05)", minProp, false)
+            .refOption("threshold", "Minimum threshold for SNV proportions (default: 0.05)", threshold, false)
             .refOption("n", "Number of SNVs (default: 1000)", n, false)
             .refOption("m", "Number of samples (default: 2)", m, false)
             .refOption("k", "Number of segments (default: 10)", k, false)
@@ -47,7 +50,8 @@ int main(int argc, char **argv) {
             .refOption("f", "Whether to output files", _f, false)
             .refOption("output_file_dir", "The directory for where to write output files", _output_file_dir, false)
             .refOption("num_tries", "The number of tries for sampling mutation rejection sampling (default 1000)", num_tries, false)
-            .refOption("restrictLoss", "Whether to restrict copy number loss (default false)", restrictLoss, false);
+            .refOption("restrictLoss", "Whether to restrict copy number loss (default false)", restrictLoss, false)
+            .refOption("uniform", "use uniform distribution for mutation assignments", uniform, false);
             //.refOption("dirichletParam", "The parameter for the dirichlet (default 1)", dirich_param, false)
 
 
@@ -105,7 +109,7 @@ int main(int argc, char **argv) {
         //std::ofstream outTree("/Users/annahart/CLionProjects/clonesim/build/test/tree.txt");
         //phylo.writeTree(outTree);
 
-        phylo.sampleMutations(n, l, num_tries, dirich_param);
+        phylo.sampleMutations(n, l, num_tries, dirich_param, uniform, threshold);
 
 
         std::cerr << "Clonal tree constructed, sampling proportions..." << std::endl;

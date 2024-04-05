@@ -112,31 +112,6 @@ void SingleCell::loadData(std::ostream &out, std::string &input_file_dir, double
     out << "\n\n*******\n\n"; */
 
     addNoiseCNA(cnaErrorRate, plsOne, minusOne);
-
-/*     for (int aa = 0; aa < _nodeInformationRows; aa++) {
-        for (int bb = 0; bb < _nodeInformationColumns; bb++) {
-            out << _NODE_INFORMATION[aa][bb] << "\t";
-        }
-        out << "\n";
-    } 
- */
-
-
-/* 
-     for (int a = 0; a < i; a++) {
-        for (int b = 0; b < j; b++) {
-            out << _SCS_PREV[a][b] << "\t";
-        }
-        out << "\n"; */
-    //}  
-
-    /* for (int aa = 0; aa < _nodeInformationRows; aa++) {
-        for (int bb = 0; bb < _nodeInformationColumns; bb++) {
-            out << _NODE_INFORMATION[aa][bb] << "\t";
-        }
-        out << "\n";
-    }  */
-    return;
 }
 
 void SingleCell::addNoiseCNA(double cnaErrorRate, double plsOne, double minusOne) {
@@ -203,9 +178,6 @@ void SingleCell::addNoiseCNA(double cnaErrorRate, double plsOne, double minusOne
         }
 
 
-        //introduce error type (if permitted)
-
-
         //int newX = gaussianDraw(xcopy, _cnaError);
         //int newY = gaussianDraw(ycopy, _cnaError);
         //std::poisson_distribution<int> poisson_X(xcopy);
@@ -216,7 +188,6 @@ void SingleCell::addNoiseCNA(double cnaErrorRate, double plsOne, double minusOne
         _NODE_INFORMATION[r][_yCol] = ycopy;
     }
 }
-
 int SingleCell::gaussianDraw(int mean, double errorRate) {
     //sample from a binomial distribution
     boost::random::normal_distribution<double> distribution(mean, errorRate);

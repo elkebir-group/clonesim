@@ -17,20 +17,19 @@ int main(int argc, char **argv) {
     double copyNeutral = .4;
 
     lemon2::ArgParser ap(argc, argv);
-    ap.refOption("num_cells", "The number of cells to simulate with the single cell generation (default: 1000)", numSCS,
-                 false)
+    ap.refOption("num_cells", "The number of cells to simulate with the single cell generation (default: 1000)", numSCS, false)
             .refOption("read_depth", "The read_depth for the single cell generation (default: .05)", read_depth, false)
             .refOption("alpha_fp", "The sequencing error for single cell generation (default .001)", alpha_fp, false)
             .refOption("out_dir", "The output directory for single cell generation (default: results)", out_dir, false)
             .refOption("in_dir", "The input directory of files for single cell generation", in_dir)
             .refOption("k", "Number of segments (default: 10)", k, false)
             .refOption("m", "Number of samples (default: 2)", m, false)
-            .refOption("e", "The error rate for CNA data (default: 0)", cna_error, false);
-            .refOption("add", "The proportion of copy number errors adding an allele (default .3"), plsOne, false);
-            .refOption("sub", "The proportion of copy number errors subtracting an allele (default .3"), minusOne, false);
-            .refOption("neutral", "The proportion of copy number errors that are total copy number neutral (default .4"), copyNeutral, false);
+            .refOption("e", "The error rate for CNA data (default: 0)", cna_error, false)
+            .refOption("add", "The proportion of copy number errors adding an allele (default .3)", plsOne, false)
+            .refOption("sub", "The proportion of copy number errors subtracting an allele (default .3)", minusOne, false);
 
     ap.parse();
+
 
 
     try {
@@ -38,7 +37,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < m; i++) {
             std::cerr << "starting sample " << i << std::endl;
             SingleCell sc(numSCS, read_depth, alpha_fp, out_dir, k, m, cna_error);
-            sc.main(std::cout, in_dir, i, cna_error, plsOne, minusOne, copyNeutral);
+            sc.main(std::cout, in_dir, i, cna_error, plsOne, minusOne);
         }
     }
     catch (std::runtime_error &e) {

@@ -1,8 +1,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 // #include "gencnatrees.h"
-#include "cnagraph.h"
-#include "cnatree.h"
+#include "../cnagraph.h"
+#include "../cnatree.h"
 
 namespace py = pybind11;
 

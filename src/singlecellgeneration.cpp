@@ -316,7 +316,7 @@ void SingleCell::initializeSCS() {
 
         _segmentCopyNumbers[clone][seg][0] = x;
         _segmentCopyNumbers[clone][seg][1] = y;
-        std::cout << clone << "," << seg << std::endl;
+        // std::cout << clone << "," << seg << std::endl;
 
     }
 
@@ -466,14 +466,20 @@ void SingleCell::printSCS(std::ostream &out, int sample) {
 
     //write a sparse dataframe of the variant and total read counts 
     if (_outFiles["SPARSE"].compare("") != 0) {
+        std::cout << "Writing sparse file..." << std::endl;
         std::string delim = "\t";
         std::ofstream myFile(fname_sparse);
         myFile << "segment" << delim << "mutation" << delim << "cell" << delim << "varReads" << delim << "totReads"
                << std::endl;
-
+        std::cout << "_numMutations: " << _numMutations <<std::endl;
+        std::cout << "_NUMSCS: " << _NUMSCS <<std::endl;
         for (int j = 0; j < _numMutations; j++) {
             for (int i = 0; i < _NUMSCS; i++) {
                 int seg = _segments[_cellLabels[i]][j];
+                 if(i == _NUMSCS -1 & j == _numMutations -1){
+                    std::cout << j << ":" << i << "seg: " << seg << " cellLabels[i] "  << _cellLabels[i] << ":"  << _varReads[i][j] << "," << _totReads[i][j] <<std::endl;
+
+                 }
 
                 if (_totReads[i][j] > 0) {
                     myFile << seg << delim << j << delim << i << delim << _varReads[i][j] << delim << _totReads[i][j]

@@ -10,19 +10,19 @@ public:
     SingleCell(int numSCS, double read_depth, double alpha_fp, std::string outdir, int numSegments, int numSamples,
                double cna_error);
 
-    void main(std::ostream &out, std::string &input_file_dir, int sample, double cnaErrorRate, double plsOne, double minusOne);
+    void main(std::ostream &out, std::string &input_file_dir, int sample, double cnaErrorRate, double plsOne);
 
-    void loadData(std::ostream &out, std::string &input_files, double cnaErrorRate, double plsOne, double minusOne);
+    void loadData(std::ostream &out, std::string &input_files);
 
-    void addNoiseCNA(double cnaErrorRate, double plsOne, double minusOne);
+    void addCNANoise(int cell, int segment, double cnaErrorRate, double plsOne);
 
-    int gaussianDraw(int mean, double errorRate);
+//    int gaussianDraw(int mean, double errorRate);
 
     void generateECDF(int i);
 
     void initializeSCS();
 
-    void generateCells(int sample);
+    void generateCells(int sample, double cnaError, double plsOne);
 
     int sampleSingleCells(int sample);
 
@@ -47,6 +47,7 @@ private:
     std::vector<std::vector<int>> _NODE_INFORMATION;
     std::vector<std::vector<double>> _ecdf; //cdf of clonal proportions (dimensions: 1 x #clones)
     std::vector<std::vector<std::vector<int>>> _segmentCopyNumbers; //The copy number of each segemnt in each clone for x and y. Dimensions: #clones x #segments x 2
+    std::vector<std::vector<std::pair<int,int>>> _cnCalls; //The copy number call (x,y) of each cell and segment  Dimensions: # cells x #segments
     std::vector<std::vector<int>> _segments; //the segment of each mutation in each clone. Dimensions: #clones x #mutations
     std::string outdir;
     std::map<std::string, std::string> _outFiles;
@@ -65,6 +66,7 @@ private:
     int _clusterIDCol;
     double _READ_DEPTH;
     double _alpha_fp;
+
 
 
 };

@@ -19,7 +19,7 @@ SingleCell::SingleCell(int numSCS, double read_depth, double alpha_fp, std::stri
                  {"CELLS",           outdir + "/cells"},
                  {"CELLASSIGNMENTS", outdir + "/cellAssignments"}}), _alpha_fp(alpha_fp)
         //, _seed
-        , _varReads(), _refReads(), _totReads(), _cellLabels(), _SCS_PREV() //Note: the first column is the node ID
+        , _varReads(), _refReads(), _totReads(), _cnCalls(numSCS, std::vector<std::pair<int, int>>(numSegments)), _cellLabels(), _SCS_PREV() //Note: the first column is the node ID
         , _NODE_INFORMATION(), _ecdf() //cdf of clonal proportions
         , _segmentCopyNumbers(), _segments(), _numClones(0), _nodeInformationRows(0), _nodeInformationColumns(0),
           _numMutations(0), _nodeCol(0), _segmentCol(1), _xCol(2), _yCol(3), _mCol(4), _xbarCol(5), _ybarCol(6),
@@ -27,22 +27,22 @@ SingleCell::SingleCell(int numSCS, double read_depth, double alpha_fp, std::stri
 
 }
 
-void SingleCell::main(std::ostream &out, std::string &input_file_dir, int i, double cnaErrorRate, double plsOne, double minusOne) {
+void SingleCell::main(std::ostream &out, std::string &input_file_dir, int i, double cnaError, double plsOne) {
     std::cerr << "loading data" << std::endl;
-    loadData(std::cout, input_file_dir, cnaErrorRate, plsOne, minusOne);
+    loadData(std::cout, input_file_dir);
     std::cerr << "generating ecdf" << std::endl;
     generateECDF(i);
     std::cerr << "initializing ecdf" << std::endl;
     initializeSCS();
     std::cout << "Done intializing." << std::flush;
     std::cerr << "generate cells" << std::endl;
-    generateCells(i);
+    generateCells(i, cnaError, plsOne);
     std::cerr << "saving data" << std::endl;
     printSCS(std::cout, i);
     std::cerr << "sample  " << i << " complete!" << std::endl;
 }
 
-void SingleCell::loadData(std::ostream &out, std::string &input_file_dir, double cnaErrorRate, double plsOne, double minusOne) {
+void SingleCell::loadData(std::ostream &out, std::string &input_file_dir) {
     int i = 0;
     int j = 0;
     std::string proportion_fn = input_file_dir + "/proportions.tsv";
@@ -111,94 +111,65 @@ void SingleCell::loadData(std::ostream &out, std::string &input_file_dir, double
 
     out << "\n\n*******\n\n"; */
 
-    addNoiseCNA(cnaErrorRate, plsOne, minusOne);
+
 }
 
-void SingleCell::addNoiseCNA(double cnaErrorRate, double plsOne, double minusOne) {
-    for (int r = 0; r < _nodeInformationRows; r++) {
-        int xcopy = _NODE_INFORMATION[r][_xCol];
-        int ycopy = _NODE_INFORMATION[r][_yCol];
-        float rr;
-        boost::random::uniform_01<> myrand;
-//    std::uniform_real_distribution<> myrand(0, 1); //uniform distribution between 0 and 1
 
-        //generate possible states
-        // +1/-1, -1/+1, +2/-2, -2/+2,
-        int terminate = 0;
-        int resample = 0;
-        while (terminate == 0 || resample == 1) {
-        //flip coin for error
-            rr = myrand(g_rng);
-            int numCNAError = 0;
-            if (rr < cnaErrorRate) {
-                resample = 0;
-                //introduce cnaError
-                float r2 = myrand(g_rng);
-                float r3 = myrand(g_rng);
-                if (r2 < plsOne) { //add copy to 1 allele
-                    if (r3 < .5) {
-                        xcopy += 1;
-                    } else {
-                        ycopy += 1;
-                    }
-                } else if (r2 < plsOne + minusOne) { //subtract copy from 1 allele
-                    if (r3 < .5) {
-                        if (xcopy >= 1) {
-                            xcopy -= 1;
-                        } else {
-                            resample = 1;
-                        }
-                    } else {
-                        if (ycopy >= 1) {
-                            ycopy -= 1;
-                        } else {
-                            resample = 1;
-                        }
-                    }
-                } else { //total number copy stays same (+1/-1)
-                    if (r3 < .5) {
-                        if (xcopy >= 1) {
-                            xcopy -= 1;
-                            ycopy += 1;
-                        } else {
-                            resample = 1;
-                        }
-                    } else {
-                        if (ycopy >= 1) {
-                            ycopy -= 1;
-                            xcopy += 1;
-                        } else {
-                            resample = 1;
-                        }
-                    }
+void SingleCell::addCNANoise(int cell, int segment, double cnaErrorRate, double plsOne) {
+    int clone = _cellLabels[cell];
+    int xcopy = _segmentCopyNumbers[clone][segment][0];
+    int ycopy = _segmentCopyNumbers[clone][segment][1];
+    boost::random::uniform_01<> myrand;
+    if (myrand(g_rng) < cnaErrorRate) {
+
+        if (myrand(g_rng) < plsOne) {
+            // add +/- 1
+            if (myrand(g_rng) < 0.5) {
+                if (myrand(g_rng) < 0.5 || xcopy == 0) {
+                    xcopy++;
+                } else {
+                    xcopy = xcopy - 1;
                 }
             } else {
-                terminate = 1;
+                if (myrand(g_rng) < 0.5 || ycopy == 0) {
+                    ycopy++;
+                } else {
+                    ycopy = ycopy - 1;
+                }
+            }
+
+        } else {
+            if (myrand(g_rng) < 0.5) {
+                if (myrand(g_rng) < 0.5 || xcopy == 1) {
+                    xcopy = xcopy + 2;
+                } else {
+                    xcopy = xcopy - 2;
+                }
+            } else {
+                if (myrand(g_rng) < 0.5 || ycopy == 1) {
+                    ycopy = ycopy + 2;
+                } else {
+                    ycopy = ycopy - 2;
+                }
             }
         }
 
+    }
+    _cnCalls[cell][segment] = std::make_pair(xcopy, ycopy);
+}
 
-        //int newX = gaussianDraw(xcopy, _cnaError);
-        //int newY = gaussianDraw(ycopy, _cnaError);
-        //std::poisson_distribution<int> poisson_X(xcopy);
-        //std::poisson_distribution<int> poisson_Y(ycopy);
-        //int newX = poisson_X(g_rng);
-        //int newY = poisson_Y(g_rng);
-        _NODE_INFORMATION[r][_xCol] = xcopy;
-        _NODE_INFORMATION[r][_yCol] = ycopy;
-    }
-}
-int SingleCell::gaussianDraw(int mean, double errorRate) {
-    //sample from a binomial distribution
-    boost::random::normal_distribution<double> distribution(mean, errorRate);
-//    boost::math:: variate_generator<boost::mt19937, boost::math::normal_distribution<>> gen_norm(g_rng, distribution);
-    int draw = distribution(g_rng);
-    while (draw < 0) { //reject draws which are less than 0
-        draw = distribution(g_rng);
-    }
-    int copyNumber = std::round(draw);
-    return copyNumber;
-}
+
+//int SingleCell::gaussianDraw(int mean, double errorRate) {
+//    //sample from a binomial distribution
+//    boost::random::normal_distribution<double> distribution(mean, errorRate);
+////    boost::math:: variate_generator<boost::mt19937, boost::math::normal_distribution<>> gen_norm(g_rng, distribution);
+//    int draw = distribution(g_rng);
+//    while (draw < 0) { //reject draws which are less than 0
+//        draw = distribution(g_rng);
+//    }
+//    int copyNumber = std::round(draw);
+//    return copyNumber;
+//}
 
 // _SCS_PREV[i][j] is the clone proportion of sample i for node j
 // ecdf is the cumulative distribution for the clone proportions of the sample
@@ -243,6 +214,7 @@ void SingleCell::initializeSCS() {
     // _totalAlleles.resize(_numClones, std::vector<std::vector<int>>(_numMutations, std::vector<int>(2, 0))); 
     _segments.resize(_numClones, std::vector<int>(_numMutations));
     _segmentCopyNumbers.resize(_numClones, std::vector<std::vector<int>>(_numSegments, std::vector<int>(2, 0)));
+
     for (int i = 0; i < _NUMSCS; i++) {
         for (int j = 0; j < _numMutations; j++) {
 
@@ -252,6 +224,10 @@ void SingleCell::initializeSCS() {
             _totReads[i][j] = 0;
 
         }
+       for(int ell=0; ell < _numSegments; ell++){
+           _cnCalls[i][ell] = std::make_pair(0,0);
+       }
+
     }
     std::cout << "done initializing read count matrices" << std::endl;
     for (int a = 0; a < _numClones; a++) {
@@ -283,6 +259,8 @@ void SingleCell::initializeSCS() {
         int x = _NODE_INFORMATION[r][_xCol];
         int y = _NODE_INFORMATION[r][_yCol];
 
+
+
         _segmentCopyNumbers[clone][seg][0] = x;
         _segmentCopyNumbers[clone][seg][1] = y;
         // std::cout << clone << "," << seg << std::endl;
@@ -296,7 +274,7 @@ void SingleCell::initializeSCS() {
 
 //Generates variant and reference read counts for _NUMSCS single cells 
 //sample is index of the biopsy sample and is used to make sure the correct clonal proporations are used
-void SingleCell::generateCells(int sample) {
+void SingleCell::generateCells(int sample, double cnaError, double plsOne) {
     std::cout << "generating single cell read counts" << std::endl;
     _cellLabels.resize(_NUMSCS);
     boost::random::uniform_01<double> myrand;
@@ -339,6 +317,8 @@ void SingleCell::generateCells(int sample) {
 
 
 
+
+
             //segment assignment doesn't change by clone, this can be a map
             _segments[clone][j] = _NODE_INFORMATION[rowOfMutation][_segmentCol];
 
@@ -359,7 +339,17 @@ void SingleCell::generateCells(int sample) {
             //TO DO: Check how code handles this when there are no mutated alleles
 
         }
-    }
+        //add copy number error
+
+        for (int s = 0; s < _numSegments; s++) {
+             addCNANoise(i, s, cnaError, plsOne );
+
+        }
+//            myFile << s << delim << i << delim << _segmentCopyNumbers[c][s][0] << delim
+//                   << _segmentCopyNumbers[c][s][1] << std::endl;
+
+        }
+
 }
 
 
@@ -452,10 +442,10 @@ void SingleCell::printSCS(std::ostream &out, int sample) {
         for (int j = 0; j < _numMutations; j++) {
             for (int i = 0; i < _NUMSCS; i++) {
                 int seg = _segments[_cellLabels[i]][j];
-                 if(i == _NUMSCS -1 & j == _numMutations -1){
-                    std::cout << j << ":" << i << "seg: " << seg << " cellLabels[i] "  << _cellLabels[i] << ":"  << _varReads[i][j] << "," << _totReads[i][j] <<std::endl;
-
-                 }
+//                 if(i == _NUMSCS -1 && j == _numMutations -1){
+//                    std::cout << j << ":" << i << "seg: " << seg << " cellLabels[i] "  << _cellLabels[i] << ":"  << _varReads[i][j] << "," << _totReads[i][j] <<std::endl;
+//
+//                 }
 
                 if (_totReads[i][j] > 0) {
                     myFile << seg << delim << j << delim << i << delim << _varReads[i][j] << delim << _totReads[i][j]
@@ -476,10 +466,10 @@ void SingleCell::printSCS(std::ostream &out, int sample) {
         int prevSeg = -1;
         int seg = 0;
         for (int i = 0; i < _NUMSCS; i++) {
-            int c = _cellLabels[i];
+//            int c = _cellLabels[i];
             for (int s = 0; s < _numSegments; s++) {
-                myFile << s << delim << i << delim << _segmentCopyNumbers[c][s][0] << delim
-                       << _segmentCopyNumbers[c][s][1] << std::endl;
+                myFile << s << delim << i << delim << _cnCalls[i][s].first << delim
+                       << _cnCalls[i][s].second << std::endl;
 
             }
         }

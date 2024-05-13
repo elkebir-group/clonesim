@@ -1,5 +1,8 @@
-cmake_minimum_required( VERSION 2.8.12 )
-project(simcancerphylo)
+cmake_minimum_required(VERSION 3.5)
+
+
+
+project(clonelib)
 
 set( CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR} ${CMAKE_MODULE_PATH} )
 
@@ -128,6 +131,30 @@ set ( generatesinglecells_hdr
         src/generatesinglecellsmain.cpp
 )
 
+set ( clonelib_hdr
+        src/cnatree.h
+        src/basetree.h
+        src/genotypetree.h
+        src/cnagraph.h
+        src/basematrix.h
+        src/utils.h
+)
+
+
+set ( clonelib_src
+        src/cnatree.cpp
+        src/basetree.cpp
+        src/genotypetree.cpp
+        src/basematrix.cpp
+        src/utils.cpp
+        src/cnagraph.cpp
+
+)
+
+set (clonelib_py
+  src/pybind/gen_trees_pybind.cpp
+)
+
 set( LIBLEMON_ROOT "$ENV{HOME}/lemon" CACHE PATH "Additional search directory for lemon library" )
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
@@ -178,4 +205,29 @@ target_link_libraries( visualizephylo ${CommonLibs} )
 
 add_executable( generatesinglecells ${generatesinglecells_src} ${generatesinglecells_hdr}
         src/generatesinglecellsmain.cpp)
+
 target_link_libraries( generatesinglecells ${CommonLibs})
+
+
+
+
+
+# Install the target to the appropriate locations within the Conda environment
+
+find_package(pybind11 REQUIRED)
+pybind11_add_module(clonelib ${clonelib_hdr} ${clonelib_src} ${clonelib_py})
+
+find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+get_filename_component(PYTHON_PREFIX "${PYTHON_EXECUTABLE}" DIRECTORY)
+
+message(STATUS "Python interpreter: ${PYTHON_EXECUTABLE}")
+message(STATUS "Python3_VERSION_MAJOR: ${Python3_VERSION_MAJOR}")
+message(STATUS "Python3_VERSION_MINOR: ${Python3_VERSION_MINOR}")
+message(STATUS "Python prefix: ${PYTHON_PREFIX}")
+
+install(TARGETS clonelib
+        COMPONENT python
+        LIBRARY DESTINATION "${PYTHON_PREFIX}/../lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages"
+        ARCHIVE DESTINATION "${PYTHON_PREFIX}/../lib"
+        RUNTIME DESTINATION "${PYTHON_PREFIX}")
+

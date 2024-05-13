@@ -1,13 +1,36 @@
 # clonesim
 
-## compilation
+<!-- ## compilation
 
 ```
 mkdir build
 cd build
 cmake ../ -DLIBLEMON_ROOT=/scratch/software/lemon/  -DBOOST_ROOT=/scratch/software/boost_1_74_0/
 make
+``` -->
+
+
+## compilation with python package clonelib installation 
+Note that  [pybind11](https://pybind11.readthedocs.io/en/stable/installing.html) is required for installation. It can be installed via pip or conda.
+
+
 ```
+pip install pybind11
+```
+
+```
+conda install -c conda-forge pybind11
+```
+
+
+```
+mkdir build
+cd build
+cmake ../ -DLIBLEMON_ROOT=/scratch/software/lemon/  -DBOOST_ROOT=/scratch/software/boost_1_74_0/
+make install
+```  
+
+The clonelib package will be installed to the site-packages directory of your Python environment.
 
 ## usage
 

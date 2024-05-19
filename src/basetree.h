@@ -19,6 +19,13 @@ public:
   /// @param k Number of states
   BaseTree(int k);
 
+    // Delete the copy constructor and copy assignment operator
+//    BaseTree(const BaseTree&) = delete;
+//    BaseTree& operator=(const BaseTree&) = delete;
+//
+//    // Provide move constructor and move assignment operator
+//    BaseTree(BaseTree&&) noexcept = default;
+//    BaseTree& operator=(BaseTree&&) noexcept = default;
   /// Copy constructor
   ///
   /// @param other Other state tree

@@ -37,6 +37,7 @@ public:
             return !(_x == other._x && _y == other._y);
         }
 
+
         /// Number of maternal copies
         int _x;
         /// Number of paternal copies

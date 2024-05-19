@@ -52,7 +52,19 @@ public:
     {
       return !(_x == other._x && _y == other._y && _xbar == other._xbar && _ybar == other._ybar);
     }
-    
+    double vaf() const
+    {
+      int totalCopies = _x + _y;
+      if (totalCopies == 0) {
+          return 0.0; // Handle division by zero case
+      }
+      return (_xbar + _ybar) / (totalCopies * 1.0);
+    }
+
+      double mutCopies() const
+      {
+          return (_xbar + _ybar);
+      }
     /// Number of maternal copies
     int _x;
     /// Number of paternal copies

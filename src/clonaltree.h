@@ -99,18 +99,13 @@ public:
                                                           double lambda);
 
     /// given a cell mapping phi, optimize the genotypes of SNVs given the Tree
-    void assignGenotypes(const IntSetMap& phi, const Data& D,double alpha, double lambda);
+    double assignGenotypes(const IntSetMap& phi, const Data& D,double alpha, double lambda);
 
     /// jointly find the optimal cell mapping phi and genotypes given the Data and clonal tree T
     std::pair<double, IntSetMap> optimize(const IntSet &cells, const Data &D, double alpha, double lambda);
 
-//    void genotypeTreeToClonalTree( int mutClustIdx,  const GenotypeTree& T, const IntSet& muts, int seg);
-    void computeSnvAssignmentCost(int mutClustIdx, int treeIdx, std::map<int, double> &snvCost,
-                                              std::map<int, std::pair<int, int>> &snvAssign,
-                                              const GenotypeTree& T, const IntSetMap& phi, const IntSet& muts,
-                                              int seg, const Data& data, double alpha, double lambda);
 
-    IntSetMap collapsePhi(const ClonalTree& ct, const GenotypeTree& T, const IntSetMap& phi, const IntSet& descNodeStates, int seg);
+
 private:
     Genotypes _genotypes;
     CnStates _cnStates;
@@ -132,6 +127,13 @@ private:
     void updateGenotype(IntSet muts, Node u, GenotypeTree T);
 
     double computeGenotypeLikelihood(int j,IntSetMap phi, const Data& D, double alpha, double lambda);
+
+    void computeSnvAssignmentCost(int mutClustIdx, int treeIdx, std::map<int, double> &snvCost,
+                                  std::map<int, std::pair<int, int>> &snvAssign,
+                                  const GenotypeTree& T, const IntSetMap& phi, const IntSet& muts,
+                                  int seg, const Data& data, double alpha, double lambda);
+
+    IntSetMap collapsePhi(const ClonalTree& ct, const GenotypeTree& T, const IntSetMap& phi, const IntSet& descNodeStates, int seg);
 
 
 };

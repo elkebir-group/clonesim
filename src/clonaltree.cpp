@@ -19,7 +19,8 @@ ClonalTree::ClonalTree(const std::vector<IntPair>& edges,
           _mut2seg(mut2seg),
           _seg2muts(),
           _segments(),
-          _nodes()
+          _nodes(),
+          _revnodes()
 {
     //create the mapping of segments to SNVs
     for(const auto& pair : _mut2seg)
@@ -51,6 +52,11 @@ ClonalTree::ClonalTree(const std::vector<IntPair>& edges,
     _nodes[root] = 0;
     _stateToNode = NodeVector(_nodes.size(), lemon::INVALID);
 
+    for(const auto& pair: _nodes)
+    {
+        _revnodes[pair.second] = pair.first;
+    }
+
     // 3. add nodes
     char buf[1024];
     for (const auto& node: _nodes)
@@ -69,6 +75,14 @@ ClonalTree::ClonalTree(const std::vector<IntPair>& edges,
         if (genotypes.find(node.first) != genotypes.end()) {
             _genotypes[v] = genotypes.at(node.first);
         }
+
+//        for(NodeIt u(_T); u != lemon::INVALID; ++u){
+//            for(int j: _muts){
+//                Genotype g = _genotypes[u][0];
+//                std::cout << "Node " << state(u) << ":" << g._x << "," <<g._y << ","<< g._xbar <<"," << g._ybar << std::endl;
+//            }
+//
+//        }
 
         if (cnStates.find(node.first) != cnStates.end()) {
             _cnStates[v] = cnStates.at(node.first);
@@ -96,11 +110,12 @@ ClonalTree::ClonalTree(const std::vector<IntPair>& edges,
 //        std::cout << S << std::endl;
 
 
+
             for(NodeIt u(_T); u != lemon::INVALID; ++u )
             {
 
                 if(_isMutCluster[u]){
-//                    std::cout<< _nodeToState[u] << std::endl;
+//
                     CnaGenotype uCnaGeno = _cnStates[u][ell];
 
                     CnaGenotypeSet descCNAs =descCNAGenotypes(u,ell);
@@ -110,6 +125,7 @@ ClonalTree::ClonalTree(const std::vector<IntPair>& edges,
                     {
 
                         GenotypeTree T(edgeSet);
+//                        std::cout << "GENOTYPE TREE" << std::endl;
 //                        std::cout << T << std::endl;
                         int mutState = T.mutationState();
                         ///check that the split state of SNV Tree T matches the copy number state of Node u
@@ -217,6 +233,7 @@ double ClonalTree::assignGenotypes(const IntSetMap& phi, const Data& data,
             IntSet muts = clust2tree.second;
 
             GenotypeTree T = _rho[node(clust)][ell][treeIdx];
+//            std::cout << T << std::endl;
             updateGenotype(muts, node(clust), T);
 
         }
@@ -245,7 +262,7 @@ void ClonalTree::computeSnvAssignmentCost(int mutClustIdx, int treeIdx, std::map
     IntSet descNodeStates = D(mutClustIdx);
 
 
-    std::cout << T << std::endl;
+
     int mutState = T.mutationState();
 
     for(int i=0; i < T.k(); ++i)
@@ -305,7 +322,7 @@ IntSetMap ClonalTree::collapsePhi(const ClonalTree& ct, const GenotypeTree& T, c
     IntSetMap newPhi;
     int newNode;
     CnaGenotype splitCN(T.x(T.mutationState()),T.y(T.mutationState() ));
-    std::cout << splitCN._x << "|" << splitCN._y << std::endl;
+
     for (auto cellpair: phi)
     {
 
@@ -364,7 +381,23 @@ IntSetMap ClonalTree::collapsePhi(const ClonalTree& ct, const GenotypeTree& T, c
     return newPhi;
 }
 
+std::map<int,std::map<int, std::tuple<int,int,int,int>>> ClonalTree::getGenotypes()
+{
+    std::map<int,std::map<int, std::tuple<int,int,int,int>>> genotypes;
+    for(NodeIt u(_T); u != lemon::INVALID; ++u)
+    {
+        int idx = state(u);
 
+        int lab = _revnodes[idx];
+        for(int m: _muts){
+            Genotype g = _genotypes[u][m];
+            genotypes[lab][m] = {g._x, g._y, g._xbar, g._ybar};
+        }
+
+
+    }
+    return genotypes;
+}
 
 /// given a genotype tree, update the genotypes for all nodes in the clonal tree
 void ClonalTree::updateGenotype(int mut, Node u, GenotypeTree T)
@@ -419,9 +452,10 @@ void ClonalTree::updateGenotype(IntSet muts, Node u, GenotypeTree T)
         BoolNodeMap presence(_T, false);
         for (int state: D(_nodeToState[u]))
         {
-            CnaGenotype cn = _cnStates[u][_mut2seg[element]];
             Node v = _stateToNode[state];
-            presence[v] = false;
+            CnaGenotype cn = _cnStates[v][_mut2seg[element]];
+
+
             for (int i: T.D(mutState))
             {
                 if (cn._x == T.x(i) && cn._y == T.y(i) && T.z(i) > 0)
@@ -626,34 +660,37 @@ double ClonalTree::computeLikelihood(const IntSetMap& phi,
 }
 
 std::pair<double, IntSetMap> ClonalTree::optimize(const IntSet &cells, const Data& D,
-                                                  double alpha, double lambda)
+                                                  double alpha, double lambda, int maxIter,
+                                                  double tol)
 {
 
     std::pair<double, IntSetMap> cellAssignPair = assignCells(cells, D, alpha, lambda);
-    double cost = computeLikelihood(cellAssignPair.second, D, alpha, lambda);
+//    double cost = computeLikelihood(cellAssignPair.second, D, alpha, lambda);
     double likelihood = cellAssignPair.first;
     double prevLikelihood;
-//    IntSetMap  phi =
-
-    do{
+    std::cout << "Optimizing clonal tree with max " << maxIter << " iterations and tolerance of ";
+    std::cout << tol << "..." << std::endl;
+    for(int i=0; i < maxIter; ++i)
+    {
         prevLikelihood= likelihood;
         assignGenotypes(cellAssignPair.second, D, alpha, lambda);
-        cost = computeLikelihood(cellAssignPair.second, D, alpha, lambda);
-        for(NodeIt u(_T); u != lemon::INVALID; ++u){
-            for(int j: _muts){
-                Genotype g = _genotypes[u][0];
-                std::cout << "Node " << state(u) << ":" << g._x << "," <<g._y << ","<< g._xbar <<"," << g._ybar << std::endl;
-            }
-
-        }
         cellAssignPair = assignCells(cells, D, alpha, lambda);
-
         likelihood = cellAssignPair.first;
-        cost = computeLikelihood(cellAssignPair.second, D, alpha, lambda);
+        std::cout << "iteration " << i << ": " << likelihood << std::endl;
+        if(abs(prevLikelihood - likelihood) < tol)
+        {
+            break;
+        }
 
+    }
+//        for(NodeIt u(_T); u != lemon::INVALID; ++u){
+//            for(int j: _muts){
+//                Genotype g = _genotypes[u][0];
+//                std::cout << "Node " << state(u) << ":" << g._x << "," <<g._y << ","<< g._xbar <<"," << g._ybar << std::endl;
+//            }
+//
+//        }
 
-
-    }while(abs(prevLikelihood - likelihood) > 1);
 
     return cellAssignPair;
 }
@@ -695,97 +732,3 @@ std::pair<double, IntSetMap> ClonalTree::optimize(const IntSet &cells, const Dat
 //    return out;
 //}
 
-int main() {
-    std::vector<IntPair> edges = {{0, 1}, {0, 2}, {2, 3}};
-    int k = 4;
-
-    std::map<int, std::map<int, Genotype>> genotypes = {
-            {0, {{0, Genotype {1, 1, 0, 0}}}},
-            {1, {{0, Genotype {1, 1, 0, 0}}}},
-            {2, {{0, Genotype {2, 1, 1, 0}}}},
-            {3, {{0, Genotype {3, 1, 1, 0}}}},
-
-    };
-
-    int m = 2;
-    for(int i= 0; i < k; ++i)
-    {
-        Genotype g = genotypes[i][0];
-        for(int j = 1; j < m; ++j){
-            genotypes[i][j] = Genotype(g._x, g._y, g._xbar, g._ybar);
-        }
-
-    }
-
-    std::map<int, std::map<int, CnaGenotype>> cnStates = {
-            {0, {{0, CnaGenotype {1, 1}}}},
-            {1, {{0, CnaGenotype {1, 1}}}},
-            {2, {{0, CnaGenotype {2, 1}}}},
-            {3, {{0, CnaGenotype {3, 1}}}}
-    };
-    IntMap mut2seg = {{0, 0}, {1, 0}};
-    IntSet mutClust = {2};
-    ClonalTree tree(edges, genotypes, cnStates, mut2seg, mutClust);
-    IntMatrix var(3, std::vector<int>(2));
-    IntMatrix tot (3, std::vector<int>(2));
-    IntMatrix xobs (3, std::vector<int>(1));
-    IntMatrix yobs (3, std::vector<int>(1));
-    var[0][0] = 0;
-    var[1][0] = 20;
-    var[2][0] = 20;
-
-    tot[0][0] = 10;
-    tot[1][0] = 40;
-    tot[2][0] = 40;
-
-    var[0][1] = 0;
-    var[1][1] = 20;
-    var[2][1] = 20;
-
-    tot[0][1] = 10;
-    tot[1][1] = 40;
-    tot[2][1] = 40;
-
-//    for (const auto& row : var) {
-//        for (const auto& elem : row) {
-//            std::cout << elem << " ";
-//        }
-//        std::cout << std::endl;
-//    }
-
-    xobs[0][0] = 1;
-    xobs[1][0] = 2;
-    xobs[2][0] = 3;
-
-    yobs[0][0] = 1;
-    yobs[1][0] = 1;
-    yobs[2][0] = 1;
-    IntMap  nodes = tree.getNodes();
-    IntSetMap phi;
-
-    phi[0] = {0};
-    phi[2] = {2};
-    phi[3] = {1};
-
-
-    double alpha = 0.00;
-    double lambda = 1000.0;
-    IntSet cells = {0,1,2};
-    Data D = Data(var, tot, xobs, yobs);
-    double like = tree.computeLikelihood(phi, D,  alpha, lambda);
-    std::cout << "Likelihood: " << like  << :: std::endl;
-
-    std::pair<double, IntSetMap> cellAss= tree.optimize(cells, D, alpha, lambda);
-
-//    std::pair<double, IntSetMap> cellAss = tree.assignCells(cells,D,0.001, 1000.0 );
-    IntSetMap  pho = cellAss.second;
-    std::cout << "Optimal likelihood: " << cellAss.first << std::endl;
-    for(auto& pair: phi)
-    {
-        std::cout << "Node: " << pair.first <<  std::endl;
-        for(int i: pair.second){
-            std::cout << "cell: " << i << std::endl;
-        }
-    }
-    return 0;
-}

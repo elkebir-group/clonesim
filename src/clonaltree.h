@@ -82,6 +82,10 @@ public:
         return _nodes;
     }
 
+    const IntMap& getRevNodes() const {
+        return _revnodes;
+    }
+
     double computeLikelihood(const IntSetMap& phi,
                             const Data& D,
                              double alpha,
@@ -102,16 +106,19 @@ public:
     double assignGenotypes(const IntSetMap& phi, const Data& D,double alpha, double lambda);
 
     /// jointly find the optimal cell mapping phi and genotypes given the Data and clonal tree T
-    std::pair<double, IntSetMap> optimize(const IntSet &cells, const Data &D, double alpha, double lambda);
+    std::pair<double, IntSetMap> optimize(const IntSet &cells, const Data &D,
+                                          double alpha, double lambda, int maxIter = 25, double tol=1.0);
 
-
+    ///convert the internal _genotypes to a python friendly version using the original int IDs
+    std::map<int,std::map<int, std::tuple<int,int,int,int>>> getGenotypes();
 
 private:
     Genotypes _genotypes;
     CnStates _cnStates;
     IntMap _mut2seg;
     IntSetMap _seg2muts;
-    std::map<int,int> _nodes;
+    std::map<int,int> _nodes;   ///original id to internal id
+    std::map<int,int> _revnodes;
     IntSet _segments;
     IntSet _muts;
     BoolNodeMap _isMutCluster;

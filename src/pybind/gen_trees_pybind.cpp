@@ -3,8 +3,14 @@
 // #include "gencnatrees.h"
 #include "../cnagraph.h"
 #include "../cnatree.h"
+#include "../clonaltree.h"
 
 namespace py = pybind11;
+
+typedef std::tuple<int, int, int, int> genotype;
+typedef std::map<int, genotype> snvGenotype;
+typedef std::map<int, snvGenotype> genotypes;
+
 
 //wrapper to convert CnaTree:CnaEdgeSetSet to python friendly format (python doesn't seem to like sets)
 const std::vector<std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>>> genCNATrees(const IntPairSet& L,
@@ -98,11 +104,90 @@ const std::vector<std::vector<std::pair<std::pair<int, int>, std::pair<int, int>
 
  }
 
+ std::tuple<double, std::map<int,int> , genotypes> optimizeClonalTree( std::vector<std::pair<int,int>> edges,
+                                                               genotypes genos,
+                                                               std::map<int, std::map<int, std::pair<int,int>>> cnstates,
+                                                        IntMap mut2seg,
+                                                        IntSet mutClusts,
+                                                        IntSet cells,
+                                                        IntMatrix var,
+                                                        IntMatrix total,
+                                                        IntMatrix xobs,
+                                                        IntMatrix yobs,
+                                                        double alpha,
+                                                        double lambda){
+
+     std::map<int,int> phi;
+     phi[0] =1;
+
+    std::map<int, IntToGenotypeMap> inGenos;
+//
+    for(auto nodeGeno: genos)
+    {
+        int node = nodeGeno.first;
+        for(auto mutGeno: nodeGeno.second)
+        {
+            std::tuple<int,int,int,int> g = mutGeno.second;
+            inGenos[node][mutGeno.first] =Genotype(std::get<0>(g),std::get<1>(g),
+                                                   std::get<2>(g),std::get<3>(g));
+        }
+
+    }
+
+//     for(auto pair: inGenos){
+//         int n = pair.first;
+//         for(auto mutG: pair.second)
+//         {
+//             Genotype g = inGenos[n][mutG.first];
+//             std::cout << "Node " << n << ":" << g._x << "," <<g._y << ","<< g._xbar <<"," << g._ybar << std::endl;
+//         }
+//
+//     }
+
+//
+    std::map<int, IntToCnaGenotypeMap> inCnStates;
+    for(auto nodeCn: cnstates)
+    {
+        int node = nodeCn.first;
+        for(auto segCn: nodeCn.second)
+        {
+            inCnStates[node][segCn.first] = CnaGenotype(segCn.second.first,segCn.second.second );
+        }
+
+    }
+     Data D(var, total, xobs, yobs);
+
+    ClonalTree ct(edges, inGenos, inCnStates, mut2seg, mutClusts);
+
+
+    std::pair<double,IntSetMap> result =  ct.optimize(cells, D, alpha, lambda);
+
+
+     for(auto pair: result.second)
+     {
+         int n = pair.first;
+         for(int i: pair.second){
+             phi[i] =n;
+         }
+     }
+
+    genotypes G = ct.getGenotypes();
+
+    IntSetMap phiInv = result.second;
+//    return std::make_tuple(100.00, phi, genos);
+
+
+
+    return std::make_tuple(result.first, phi, G);
+
+}
+
 
 
 PYBIND11_MODULE(clonelib, m) {
 
     m.def("get_cna_trees", &genCNATrees, "Get CNA trees as a Python list of lists of tuples of int pair tuples (tree edges)");
     m.def("get_genotype_trees", &genGenoTrees, "Get genotype trees as a Python list of lists of tuples of int 4 tuples (tree edges)");
+    m.def("optimize_clonal_tree", &optimizeClonalTree, "Optimize a clonal tree.");
 
 }

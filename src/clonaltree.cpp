@@ -7,6 +7,8 @@
 #include <lemon/connectivity.h>
 #include <boost/math/distributions/binomial.hpp>
 
+
+////
 ClonalTree::ClonalTree(const std::vector<IntPair>& edges,
                        const std::map<int, IntToGenotypeMap>& genotypes,
                        const std::map<int, IntToCnaGenotypeMap>& cnStates,
@@ -167,7 +169,7 @@ CnaGenotypeSet ClonalTree::descCNAGenotypes(const Node& u,int ell )
     CnaGenotypeSet descCNAGenos;
     CnaGenotype genoU = _cnStates[u][ell];
     IntSet desc = D(_nodeToState[u]);
-    double cost = 0.0;
+
 
     for(int i: desc){
        if(genoU != _cnStates[node(i)][ell])
@@ -202,6 +204,9 @@ double ClonalTree::assignGenotypes(const IntSetMap& phi, const Data& data,
                 int id = state(u);
                 int treeIdx =0;
                 for(GenotypeTree T: _rho[u][ell]){
+                     ClonalTree ct = createClonalTree();
+                     ClonalTree ct;
+                     createClonalTree(ct);
                     computeSnvAssignmentCost(id, treeIdx, snvCost, snvAssign,
                                              T, phi, _seg2muts[ell], ell, data, alpha, lambda);
 
@@ -246,6 +251,11 @@ double ClonalTree::assignGenotypes(const IntSetMap& phi, const Data& data,
 
     return cost;
 }
+
+//void ClonalTree::createClonalTree(ClonalTree &ct)
+//{
+//    Clona ct()
+//}
 
 void ClonalTree::computeSnvAssignmentCost(int mutClustIdx, int treeIdx, std::map<int, double> &snvCost,
                                           std::map<int, std::pair<int, int>> &snvAssign,
@@ -400,7 +410,7 @@ std::map<int,std::map<int, std::tuple<int,int,int,int>>> ClonalTree::getGenotype
 }
 
 /// given a genotype tree, update the genotypes for all nodes in the clonal tree
-void ClonalTree::updateGenotype(int mut, Node u, GenotypeTree T)
+void ClonalTree::updateGenotype(int mut, const Node& u,  const GenotypeTree&  T)
 {
 
 
@@ -437,7 +447,7 @@ void ClonalTree::updateGenotype(int mut, Node u, GenotypeTree T)
 
 
 /// given a genotype tree, update the genotypes for all nodes in the clonal tree
-void ClonalTree::updateGenotype(IntSet muts, Node u, GenotypeTree T)
+void ClonalTree::updateGenotype(IntSet muts, const Node& u, const GenotypeTree& T)
 {
 
 

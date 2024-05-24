@@ -401,7 +401,8 @@ std::map<int,std::map<int, std::tuple<int,int,int,int>>> ClonalTree::getGenotype
         int lab = _revnodes[idx];
         for(int m: _muts){
             Genotype g = _genotypes[u][m];
-            genotypes[lab][m] = {g._x, g._y, g._xbar, g._ybar};
+            genotypes[lab][m] = std::make_tuple(g._x, g._y, g._xbar, g._ybar);
+
         }
 
 

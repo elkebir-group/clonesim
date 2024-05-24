@@ -6,6 +6,12 @@ project(clonelib)
 
 set( CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR} ${CMAKE_MODULE_PATH} )
 
+
+
+if (CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+  set(CMAKE_OSX_ARCHITECTURES "arm64")
+endif()
+
 set(visualizephylo_src
   src/arg_parser.cpp
   src/visualizephylomain.cpp
@@ -138,6 +144,7 @@ set ( clonelib_hdr
         src/cnagraph.h
         src/basematrix.h
         src/utils.h
+        src/clonaltree.h
 )
 
 
@@ -148,7 +155,7 @@ set ( clonelib_src
         src/basematrix.cpp
         src/utils.cpp
         src/cnagraph.cpp
-
+  src/clonaltree.cpp
 )
 
 
@@ -158,7 +165,7 @@ set ( pharming_src
         src/utils.cpp
         src/clonaltree.cpp
         src/genotypetree.cpp
-        src/cnatree.cpp)
+        src/cnatree.cpp src/pharmingmain.cpp)
 
 set ( pharming_hdr
         src/arg_parser.h
@@ -228,13 +235,12 @@ target_link_libraries( generatesinglecells ${CommonLibs})
 
 
 
-
+add_executable( pharming ${pharming_src} ${pharming_hdr}
+        src/pharmingmain.cpp)
+target_link_libraries( pharming ${CommonLibs})
 
 # Install the target to the appropriate locations within the Conda environment
-
-find_package(pybind11 REQUIRED)
-pybind11_add_module(clonelib ${clonelib_hdr} ${clonelib_src} ${clonelib_py})
-
+#
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 get_filename_component(PYTHON_PREFIX "${PYTHON_EXECUTABLE}" DIRECTORY)
 
@@ -242,6 +248,13 @@ message(STATUS "Python interpreter: ${PYTHON_EXECUTABLE}")
 message(STATUS "Python3_VERSION_MAJOR: ${Python3_VERSION_MAJOR}")
 message(STATUS "Python3_VERSION_MINOR: ${Python3_VERSION_MINOR}")
 message(STATUS "Python prefix: ${PYTHON_PREFIX}")
+
+find_package(pybind11 REQUIRED)
+pybind11_add_module(clonelib ${clonelib_hdr} ${clonelib_src} ${clonelib_py})
+
+
+
+
 
 install(TARGETS clonelib
         COMPONENT python
@@ -251,6 +264,3 @@ install(TARGETS clonelib
 
 
 
-add_executable( pharming ${pharming_src} ${pharming_hdr}
-        src/clonaltree.cpp)
-target_link_libraries( pharming ${CommonLibs})

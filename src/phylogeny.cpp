@@ -587,7 +587,7 @@ void Phylogeny::sampleMutations(int n, int l, int num_tries, double dirich_param
             }
 
             if (x > 0 && y > 0) {
-                bool mut_x = unif01(g_rng) == 1;
+                bool mut_x = unif01(g_rng) > 0.5;
                 if (mut_x) {
                     _xbar[mutationNode][mutIdx] = 1;
                     _ybar[mutationNode][mutIdx] = 0;

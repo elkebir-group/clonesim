@@ -385,6 +385,18 @@ void Phylogeny::writeTree(std::string &treefn) const {
 
 }
 
+
+void Phylogeny::preorderTraversal(const Node& node, NodeVector preorder) {
+    // Process the current node
+    preorder.push_back(node);
+
+    // Recursively visit all children (outgoing arcs)
+    for (Digraph::OutArcIt arc(_T, node); arc != lemon::INVALID; ++arc) {
+        Node child = _T.target(arc); // Get the child node
+        preorderTraversal(child, preorder); // Visit the child
+    }
+}
+
 void Phylogeny::writeNodeFile(std::ostream &out, std::string &outputNodeFilename) const {
     Digraph::NodeMap<int> nodeToIndex_updated(_T);
     int idx = 0;
@@ -759,11 +771,114 @@ void Phylogeny::writeProportionFile(std::ostream &out, std::string &outputPropor
     }
 }
 
+Node Phylogeny::getParent(const Node& node) {
+    // Iterate over incoming arcs of the node (there should be only one in a tree)
+    for (Digraph::InArcIt arc(_T, node); arc != lemon::INVALID; ++arc) {
+        // Return the source of the incoming arc, which is the parent node
+        return _T.source(arc);
+    }
+    // If no incoming arc is found, this node is likely the root
+    return lemon::INVALID;  // Return INVALID if the node has no parent (it might be the root)
+}
 
-void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minProportion) {
+void Phylogeny::sampleProportions(nrSamples, double expPurity, double minProportion, int nclones) {
 
+    //TODO: fix so it works for bulk data
 
     const int nrClusters = _clusterToNode.size();
+
+    if(nclones < nrClusters){
+        std::cerr << "Warning requested number of clones is less than number of SNV clusters." << std::endl;
+        nclones = nrClusters;
+
+    }
+
+
+
+
+    //the set of nodes starting with where the cluster is introduced to parent of
+    //where it is lost
+    NodeNodeSetMap lossPred(_T);
+
+    //the set of nodes starting from the node a mutation in the cluster is lost
+    //to the set of all descendant
+    NodeSetVector lossNodes(nrClusters);
+
+    std::set<NodePair> lossPairs;
+
+
+
+    //for each lost SNV, find the gained node and the lost node
+    for (NodeIt u(_T); u != lemon::INVALID; ++u) {
+        Node par = getParent(u);
+        if(par != lemon::INVALID)
+        {
+
+            for(auto muts: _segmentToMut)
+            {
+                for(int mutIdx: muts)
+                {
+
+
+                    int totalPar = _xbar[par][mutIdx] + _ybar[par][mutIdx];
+                    int totalChild = _xbar[u][mutIdx] + _ybar[u][mutIdx];
+                    if (totalPar > 0 && totalChild == 0)
+                    {
+                        Node gained = _clusterToNode[_mutToCluster[mutIdx]];
+                        NodePair np = std::make_pair(gained, u);
+
+                        lossPairs.insert(np);
+
+                    }
+
+                }
+
+            }
+        }
+    }
+
+    //now for each node pair find the nodes where the SNV is present
+    // and the nodes where the SNV is lost
+
+
+
+    //for each loss node, find the set of nodes from cluster introduction to parent of loss
+    NodeNodeSetMap lossMutPres(_T);
+    NodeNodeSetMap lossMutLost(_T);
+    std::pair<NodeSet, NodeSet> setPairs;
+
+    std::map<NodePair, std::pair<NodeSet, NodeSet>> sampleRequirements;
+    //for each loss node, find the set of descendant
+    for(const NodePair lp: lossPairs)
+    {
+        Node gain = lp.first;
+        Node loss = lp.first;
+        NodeVector lossPreorder;
+        preorderTraversal(loss, lossPreorder);
+        NodeVector gainPreorder;
+        preorderTraversal(loss, gainPreorder);
+
+        std::set<Node> nodeDifference;
+
+        NodeSet lossNodeSet(lossPreorder.begin(), lossPreorder.end());
+        NodeSet gainNodeSet(lossPreorder.begin(), lossPreorder.end());
+
+
+
+        // Compute the set difference (nodeSet1 - nodeSet2)
+        std::set_difference(gainNodeSet.begin(), gainNodeSet.end(),
+                            lossNodeSet.begin(), lossNodeSet.end(),
+                            std::inserter(nodeDifference, nodeDifference.begin()));
+
+        sampleRequirements[lp] = std::make_pair(nodeDifference, lossNodes);
+
+
+    }
+
+
+
+
+
 
     // make sure to sample mrca and descendants of every cluster
     DoubleVector purityVector(nrSamples);
@@ -776,6 +891,7 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
             double beta = 100 - alpha;
             sftrabbit::beta_distribution<> betaDist(alpha, beta);
 
+            //resample the purity of each sample from a beta distribution
             purityVector[sampleIdx] = betaDist(g_rng);
         } else { //added AH
             purityVector[sampleIdx] = 1.;
@@ -783,66 +899,146 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
     }
 
     int countNodes = 0;
+    NodeVector allNodes;
     // initialize proportions
     for (NodeIt v(_T); v != lemon::INVALID; ++v) {
         countNodes++;
+
         _proportions[v] = DoubleVector(nrSamples, 0.);
+
+        //normal cell proportion at root is 1-purity for each sample
         if (v == _root) {
             for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx) {
                 _proportions[v][sampleIdx] = 1. - purityVector[sampleIdx];
             }
+        }else{
+            if(!_trunk[v]){
+                allNodes.push_back(v);
+            }
         }
     }
+    NodeVector sampledNodes;
+    int tcount =0;
+    while(sampledNodes.size() ==0)
 
-    IntMatrix clusterToSample(nrClusters);
-    IntVector sampleVector(nrSamples);
-    for (int i = 0; i < nrSamples; ++i) {
-        sampleVector[i] = i;
-    }
 
-    boost::random::uniform_int_distribution<> unif_samples(1, nrSamples);
+        int sampleCount =0;
+        do{
+            bool allClusters = true;
+            NodeVector shuffledNodes = allNodes;
 
-    IntMatrix sampleToCluster(nrSamples);
-    for (int clusterIdx = 0; clusterIdx < nrClusters; ++clusterIdx) {
-        std::shuffle(sampleVector.begin(), sampleVector.end(), g_rng);
-        int nr_picked_samples = unif_samples(g_rng);
+            std::shuffle(shuffledNodes.begin(), shuffledNodes.end(), g_rng);
+            NodeSet testNodes;
+            for(int i=0; i < nclones; i++)
+            {
+                testNodes.insert(shuffledNodes[i]);
+            }
 
-        clusterToSample[clusterIdx] = IntVector(sampleVector.begin(), sampleVector.begin() + nr_picked_samples);
-        for (int sample: clusterToSample[clusterIdx]) {
-            sampleToCluster[sample].push_back(clusterIdx);
+            //check that for every lossPair, there is at least one node in gainSet and lossSet in testnodes
+            bool lossreq = true;
+            for (const auto& entry : sampleRequirements)
+            {
+                // Get the key (NodePair)
+                const NodePair &nodePair = entry.first;
+                const Node &gainNode = entry.first.first;
+                const Node &lostNode = entry.first.second;
+
+                // Get the value (pair of NodeSets)
+                const std::pair<NodeSet, NodeSet> &nodeSets = entry.second;
+                const NodeSet &gainSet = nodeSets.first;
+                const NodeSet &lossSet = nodeSets.second;
+
+                NodeSet intersectionSet;
+
+                // Compute the intersection of set1 and set2
+                std::set_intersection(gainSet.begin(), gainSet.end(),
+                                      testNodes.begin(), testNodes.end(),
+                                      std::inserter(intersectionSet, intersectionSet.begin()));
+
+                NodeSet intersectionLossSet;
+
+                // Compute the intersection of set1 and set2
+                std::set_intersection(lossSet.begin(), lossSet.end(),
+                                      testNodes.begin(), testNodes.end(),
+                                      std::inserter(intersectionLossSet, intersectionLossSet.begin()));
+                if (intersectionSet.size() == 0 || intersectionLossSet.size() == 0)
+                {
+                    lossreq = false;
+                    break;
+                }
+            }
+            if(lossreq)
+            {
+
+                for (int clusterIdx = 0; clusterIdx < nrClusters; ++clusterIdx)
+                {
+                    NodeVector descVec = _clusterD[clusterIdx];
+                    if (descVec.size() == 0)
+                    {
+                        continue;
+                    }
+                    NodeSet desc(descVec.begin(), descVec.end());
+
+                    NodeSet intersectionSet;
+
+                    std::set_intersection(desc.begin(), desc.end(),
+                                          testNodes.begin(), testNodes.end(),
+                                          std::inserter(intersectionSet, intersectionSet.begin()));
+
+                    if (intersectionSet.size() == 0)
+                    {
+                        allClusters = false;
+                        break;
+                    }
+                }
+
+            }
+            if(allClusters)
+            {
+             for(Node u: testNodes)
+             {
+                 sampledNodes.push_back(u);
+             }
+            }
+
+
+                //check for every cluster that there is at least one descendent in testNodes
+
+
+
+            tcount++;
+        }while(tcount < 10000 && sampledNodes.size()==0);
+        if(sampledNodes.size() ==0)
+        {
+         nclones++;
         }
+
+
     }
 
     boost::random::gamma_distribution<> gamma_dist(1, 1);
+    //
+
     for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx) {
         double minSampleProportion = std::min(minProportion,
-                                              purityVector[sampleIdx] / sampleToCluster[sampleIdx].size());
+                                              purityVector[sampleIdx] /nclones);
 
-        NodeSet sampledNodes;
-        for (int cloneIdx = 0; cloneIdx < sampleToCluster[sampleIdx].size(); ++cloneIdx) {
-            if (_clusterD[cloneIdx].size() > 0) {
-                boost::random::uniform_int_distribution<> unif_cluster(0, _clusterD[cloneIdx].size() - 1);
-                Node v = _clusterD[cloneIdx][unif_cluster(g_rng)];
-                sampledNodes.insert(v);
-            }
-        }
-        for (Node v: sampledNodes) {
-            int a = _nodeToIndex[v];
-        }
-        DoubleVector gamma(sampledNodes.size());
+
+        //draw the proportions from a Dirichlet
+        DoubleVector gamma(nclones);
 
         bool ok = false;
         double sum;
         while (!ok) {
             ok = true;
             sum = 0;
-            for (int nodeIdx = 0; nodeIdx < sampledNodes.size(); nodeIdx++) {
+            for (int nodeIdx = 0; nodeIdx < nclones; nodeIdx++) {
                 gamma[nodeIdx] = gamma_dist(g_rng);
                 sum += gamma[nodeIdx];
             }
 
 
-            for (int nodeIdx = 0; nodeIdx < sampledNodes.size(); nodeIdx++) {
+            for (int nodeIdx = 0; nodeIdx < nclones; nodeIdx++) {
                 double prop = gamma[nodeIdx] / sum * purityVector[sampleIdx];
                 if (prop < minSampleProportion) ok = false;
             }

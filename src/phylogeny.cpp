@@ -781,13 +781,15 @@ Node Phylogeny::getParent(const Node& node) {
     return lemon::INVALID;  // Return INVALID if the node has no parent (it might be the root)
 }
 
-void Phylogeny::sampleProportions(nrSamples, double expPurity, double minProportion, int nclones) {
+void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minProportion, int nclones)
+{
 
     //TODO: fix so it works for bulk data
 
     const int nrClusters = _clusterToNode.size();
 
-    if(nclones < nrClusters){
+    if (nclones < nrClusters)
+    {
         std::cerr << "Warning requested number of clones is less than number of SNV clusters." << std::endl;
         nclones = nrClusters;
 
@@ -809,14 +811,15 @@ void Phylogeny::sampleProportions(nrSamples, double expPurity, double minProport
 
 
     //for each lost SNV, find the gained node and the lost node
-    for (NodeIt u(_T); u != lemon::INVALID; ++u) {
+    for (NodeIt u(_T); u != lemon::INVALID; ++u)
+    {
         Node par = getParent(u);
-        if(par != lemon::INVALID)
+        if (par != lemon::INVALID)
         {
 
-            for(auto muts: _segmentToMut)
+            for (auto muts: _segmentToMut)
             {
-                for(int mutIdx: muts)
+                for (int mutIdx: muts)
                 {
 
 
@@ -849,7 +852,7 @@ void Phylogeny::sampleProportions(nrSamples, double expPurity, double minProport
 
     std::map<NodePair, std::pair<NodeSet, NodeSet>> sampleRequirements;
     //for each loss node, find the set of descendant
-    for(const NodePair lp: lossPairs)
+    for (const NodePair lp: lossPairs)
     {
         Node gain = lp.first;
         Node loss = lp.first;
@@ -858,7 +861,7 @@ void Phylogeny::sampleProportions(nrSamples, double expPurity, double minProport
         NodeVector gainPreorder;
         preorderTraversal(loss, gainPreorder);
 
-        std::set<Node> nodeDifference;
+        NodeSet nodeDifference;
 
         NodeSet lossNodeSet(lossPreorder.begin(), lossPreorder.end());
         NodeSet gainNodeSet(lossPreorder.begin(), lossPreorder.end());
@@ -870,7 +873,7 @@ void Phylogeny::sampleProportions(nrSamples, double expPurity, double minProport
                             lossNodeSet.begin(), lossNodeSet.end(),
                             std::inserter(nodeDifference, nodeDifference.begin()));
 
-        sampleRequirements[lp] = std::make_pair(nodeDifference, lossNodes);
+        sampleRequirements[lp] = std::make_pair(nodeDifference, lossNodeSet);
 
 
     }
@@ -884,16 +887,19 @@ void Phylogeny::sampleProportions(nrSamples, double expPurity, double minProport
     DoubleVector purityVector(nrSamples);
 
 
-    for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx) {
+    for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx)
+    {
         double samplePurity = expPurity;
-        if (expPurity < 1.) {
+        if (expPurity < 1.)
+        {
             double alpha = expPurity * 100;
             double beta = 100 - alpha;
             sftrabbit::beta_distribution<> betaDist(alpha, beta);
 
             //resample the purity of each sample from a beta distribution
             purityVector[sampleIdx] = betaDist(g_rng);
-        } else { //added AH
+        } else
+        { //added AH
             purityVector[sampleIdx] = 1.;
         }
     }
@@ -901,42 +907,49 @@ void Phylogeny::sampleProportions(nrSamples, double expPurity, double minProport
     int countNodes = 0;
     NodeVector allNodes;
     // initialize proportions
-    for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+    for (NodeIt v(_T); v != lemon::INVALID; ++v)
+    {
         countNodes++;
 
         _proportions[v] = DoubleVector(nrSamples, 0.);
 
         //normal cell proportion at root is 1-purity for each sample
-        if (v == _root) {
-            for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx) {
+        if (v == _root)
+        {
+            for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx)
+            {
                 _proportions[v][sampleIdx] = 1. - purityVector[sampleIdx];
             }
-        }else{
-            if(!_trunk[v]){
+        } else
+        {
+            if (!_trunk[v])
+            {
                 allNodes.push_back(v);
             }
         }
     }
     NodeVector sampledNodes;
-    int tcount =0;
-    while(sampledNodes.size() ==0)
+    int tcount = 0;
+    while (sampledNodes.size() == 0)
+    {
 
 
-        int sampleCount =0;
-        do{
+        int sampleCount = 0;
+        do
+        {
             bool allClusters = true;
             NodeVector shuffledNodes = allNodes;
 
             std::shuffle(shuffledNodes.begin(), shuffledNodes.end(), g_rng);
             NodeSet testNodes;
-            for(int i=0; i < nclones; i++)
+            for (int i = 0; i < nclones; i++)
             {
                 testNodes.insert(shuffledNodes[i]);
             }
 
             //check that for every lossPair, there is at least one node in gainSet and lossSet in testnodes
             bool lossreq = true;
-            for (const auto& entry : sampleRequirements)
+            for (const auto &entry: sampleRequirements)
             {
                 // Get the key (NodePair)
                 const NodePair &nodePair = entry.first;
@@ -967,7 +980,7 @@ void Phylogeny::sampleProportions(nrSamples, double expPurity, double minProport
                     break;
                 }
             }
-            if(lossreq)
+            if (lossreq)
             {
 
                 for (int clusterIdx = 0; clusterIdx < nrClusters; ++clusterIdx)
@@ -993,30 +1006,53 @@ void Phylogeny::sampleProportions(nrSamples, double expPurity, double minProport
                 }
 
             }
-            if(allClusters)
+            if (allClusters)
             {
-             for(Node u: testNodes)
-             {
-                 sampledNodes.push_back(u);
-             }
+                for (Node u: testNodes)
+                {
+                    sampledNodes.push_back(u);
+                }
             }
 
 
-                //check for every cluster that there is at least one descendent in testNodes
+            //check for every cluster that there is at least one descendent in testNodes
 
 
 
             tcount++;
-        }while(tcount < 10000 && sampledNodes.size()==0);
-        if(sampledNodes.size() ==0)
-        {
-         nclones++;
-        }
-
-
+        } while (tcount < 10000 && sampledNodes.size() == 0);
+            if (sampledNodes.size() == 0)
+            {
+                nclones++;
+            }
     }
 
+
+
+
+
     boost::random::gamma_distribution<> gamma_dist(1, 1);
+    std::map<Node, std::vector<int>> cloneToSample;
+//    IntMatrix cloneToSample(nclones);
+    IntVector sampleVector(nrSamples);
+    for (int i = 0; i < nrSamples; ++i) {
+        sampleVector[i] = i;
+    }
+
+    boost::random::uniform_int_distribution<> unif_samples(1, nrSamples);
+
+    std::vector<NodeVector> sampleToClone(nrSamples);
+//    NodeVector sampleToClone(nrSamples);
+
+    for (const Node& clone: sampledNodes) {
+        std::shuffle(sampleVector.begin(), sampleVector.end(), g_rng);
+        int nr_picked_samples = unif_samples(g_rng);
+
+        cloneToSample[clone] = IntVector(sampleVector.begin(), sampleVector.begin() + nr_picked_samples);
+        for (int sample: cloneToSample[clone]) {
+            sampleToClone[sample].push_back(clone);
+        }
+    }
     //
 
     for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx) {
@@ -1036,7 +1072,6 @@ void Phylogeny::sampleProportions(nrSamples, double expPurity, double minProport
                 gamma[nodeIdx] = gamma_dist(g_rng);
                 sum += gamma[nodeIdx];
             }
-
 
             for (int nodeIdx = 0; nodeIdx < nclones; nodeIdx++) {
                 double prop = gamma[nodeIdx] / sum * purityVector[sampleIdx];

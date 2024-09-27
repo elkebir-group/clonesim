@@ -32,6 +32,7 @@ int main(int argc, char **argv) {
     bool removeUnsampledNodes = false;
     bool uniform = false;
     double threshold = 0.05;
+    int nclones = l;
 
     lemon2::ArgParser ap(argc, argv);
     ap.refOption("S", "Input CNA tree file", inputStateTreeFilename, true)
@@ -47,6 +48,7 @@ int main(int argc, char **argv) {
             .refOption("l", "Number of mutation clusters (default: 5)", l, false)
             .refOption("dot", "Graphviz DOT output filename (default: '', no output)", dotFilename, false)
             .refOption("r", "Remove unsampled nodes", removeUnsampledNodes, false)
+            .refOption("c", "Number of sampled clones", nclones, false)
             .refOption("f", "Whether to output files", _f, false)
             .refOption("output_file_dir", "The directory for where to write output files", _output_file_dir, false)
             .refOption("num_tries", "The number of tries for sampling mutation rejection sampling (default 1000)", num_tries, false)
@@ -106,15 +108,13 @@ int main(int argc, char **argv) {
             phylo.addSegment(T, T.truncal());
         }
         phylo.createIndex();
-        //std::ofstream outTree("/Users/annahart/CLionProjects/clonesim/build/test/tree.txt");
-        //phylo.writeTree(outTree);
 
         phylo.sampleMutations(n, l, num_tries, dirich_param, uniform, threshold);
 
 
         std::cerr << "Clonal tree constructed, sampling proportions..." << std::endl;
 
-        phylo.sampleProportions(m, expPurity, minProp);
+        phylo.sampleProportions(m, expPurity, minProp, nclones);
 
         std::cerr << "Finished sampling proportions";
 

@@ -928,6 +928,9 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
             }
         }
     }
+
+    //draw the set of clones that will be sampled for all samples
+
     NodeVector sampledNodes;
     int tcount = 0;
     while (sampledNodes.size() == 0)
@@ -1033,7 +1036,7 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
 
     boost::random::gamma_distribution<> gamma_dist(1, 1);
     std::map<Node, std::vector<int>> cloneToSample;
-//    IntMatrix cloneToSample(nclones);
+
     IntVector sampleVector(nrSamples);
     for (int i = 0; i < nrSamples; ++i) {
         sampleVector[i] = i;
@@ -1058,22 +1061,22 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
     for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx) {
         double minSampleProportion = std::min(minProportion,
                                               purityVector[sampleIdx] /nclones);
-
-
+//        NodeVector sampledClones = sampleToClone[sampleIdx];
+        int nclonesPerSample = sampleToClone[sampleIdx].size();
         //draw the proportions from a Dirichlet
-        DoubleVector gamma(nclones);
+        DoubleVector gamma(nclonesPerSample);
 
         bool ok = false;
         double sum;
         while (!ok) {
             ok = true;
             sum = 0;
-            for (int nodeIdx = 0; nodeIdx < nclones; nodeIdx++) {
+            for (int nodeIdx = 0; nodeIdx < nclonesPerSample; nodeIdx++) {
                 gamma[nodeIdx] = gamma_dist(g_rng);
                 sum += gamma[nodeIdx];
             }
 
-            for (int nodeIdx = 0; nodeIdx < nclones; nodeIdx++) {
+            for (int nodeIdx = 0; nodeIdx < nclonesPerSample; nodeIdx++) {
                 double prop = gamma[nodeIdx] / sum * purityVector[sampleIdx];
                 if (prop < minSampleProportion) ok = false;
             }
@@ -1081,7 +1084,7 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
         }
 
         int nodeIdx = 0;
-        for (Node n: sampledNodes) {
+        for (Node n: sampleToClone[sampleIdx]) {
             double prop = gamma[nodeIdx] / sum * purityVector[sampleIdx];
             _proportions[n][sampleIdx] = prop;
             nodeIdx++;

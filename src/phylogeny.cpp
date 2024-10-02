@@ -881,26 +881,52 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
         Node loss = lp.second;
         NodeVector lossPreorder;
         preorderTraversal(loss, lossPreorder);
-        NodeVector gainPreorder;
-        preorderTraversal(gain, gainPreorder);
-
-        NodeSet nodeDifference;
-
         NodeSet lossNodeSet(lossPreorder.begin(), lossPreorder.end());
-        NodeSet gainNodeSet(gainPreorder.begin(), gainPreorder.end());
+
+        NodeSet gainNodes;
+        Node currentNode = loss;
+
+        // Traverse upwards from lossNode to gainNode
+        while (currentNode != gain) {
+            if(currentNode != loss){
+                gainNodes.insert(currentNode);  // Add current node to the set
+            }
 
 
+            // Find the source of the incoming arc, i.e., the parent node
+            Digraph::InArcIt arc(_T, currentNode);
+            if (arc == lemon::INVALID) {
+                throw std::runtime_error("Invalid path: No incoming arc found, gain node not reachable.");
+            }
 
-        // Compute the set difference (nodeSet1 - nodeSet2)
-        std::set_difference(gainNodeSet.begin(), gainNodeSet.end(),
-                            lossNodeSet.begin(), lossNodeSet.end(),
-                            std::inserter(nodeDifference, nodeDifference.begin()));
+            currentNode = _T.source(arc);  // Move to the parent node
+        }
 
-        sampleRequirements[lp] = std::make_pair(nodeDifference, lossNodeSet);
+        // Add the gain node to the set
+        gainNodes.insert(gain);
 
-        if(nodeDifference.size() ==0 || lossNodeSet.size()==0){
+
+//        NodeVector gainPreorder;
+//        preorderTraversal(gain, gainPreorder);
+//
+//        NodeSet nodeDifference;
+
+
+//        NodeSet gainNodeSet(gainPreorder.begin(), gainPreorder.end());
+
+
+//
+//        // Compute the set difference (nodeSet1 - nodeSet2)
+//        std::set_difference(gainNodeSet.begin(), gainNodeSet.end(),
+//                            lossNodeSet.begin(), lossNodeSet.end(),
+//                            std::inserter(nodeDifference, nodeDifference.begin()));
+
+        if(gainNodes.size() ==0 || lossNodeSet.size()==0){
             throw std::runtime_error("invalid sampling constraints");
         }
+        sampleRequirements[lp] = std::make_pair(gainNodes, lossNodeSet);
+
+
 
 
     }

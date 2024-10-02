@@ -130,6 +130,28 @@ public:
         return _k > 1 && lemon::countOutArcs(_T, _root) == 1;
     }
 
+    bool hasAlleleLoss() const {
+        return hasAlleleLoss_helper(_root);
+    }
+
+    bool hasAlleleLoss_helper(Node source) const {
+        for (OutArcIt a(_T, source); a != lemon::INVALID; ++a) {
+            Node target = _T.target(a);
+            int x_source = _cnState[source]._x;
+            int y_source = _cnState[source]._y;
+            int x_target = _cnState[target]._x;
+            int y_target = _cnState[target]._y;
+            if ((x_target == 0 || y_target ==0) && (x_source >0 && y_source >0)) {
+                return true;
+            } else {
+                bool childLoss = hasLoss_helper(target);
+                if (childLoss) {
+                    return true;
+                }
+            }
+        }
+        return false; //if we have arrived this far with no loss
+    }
     bool hasLoss() const {
         return hasLoss_helper(_root);
     }

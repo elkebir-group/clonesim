@@ -11,6 +11,7 @@
 #include "phylogeny.h"
 #include <fstream>
 #include <string>
+ #include <boost/random.hpp>
 
 int main(int argc, char **argv) {
     int n = 1000;
@@ -32,6 +33,7 @@ int main(int argc, char **argv) {
     bool removeUnsampledNodes = false;
     bool uniform = false;
     double threshold = 0.05;
+    double lossProb = 0.05;
     int nclones = l;
 
     lemon2::ArgParser ap(argc, argv);
@@ -53,6 +55,7 @@ int main(int argc, char **argv) {
             .refOption("output_file_dir", "The directory for where to write output files", _output_file_dir, false)
             .refOption("num_tries", "The number of tries for sampling mutation rejection sampling (default 1000)", num_tries, false)
             .refOption("restrictLoss", "Whether to restrict copy number loss (default false)", restrictLoss, false)
+            .refOption("lossProb", "Whether to restrict copy number loss (default false)", lossProb, false)
             .refOption("uniform", "use uniform distribution for mutation assignments", uniform, false);
             //.refOption("dirichletParam", "The parameter for the dirichlet (default 1)", dirich_param, false)
 
@@ -61,6 +64,7 @@ int main(int argc, char **argv) {
     ap.parse();
 
     g_rng.seed(seed);
+    boost::random::uniform_real_distribution<> unif_real(0.0, 1.0);
 
     if (!inputStateTreeFilename.empty()) {
         std::ifstream inS(inputStateTreeFilename.c_str());
@@ -88,19 +92,34 @@ int main(int argc, char **argv) {
     try {
         std::list<CnaTree> cnaTrees;
         for (int i = 0; i < kk;) {
+
             CnaTree T = CnaGraph::sampleCnaTree();
+
             if (T.truncal() && (!restrictLoss | !T.hasLoss())) {
+
                 cnaTrees.push_back(T);
                 ++i;
             }
         }
 
-        for (int i = kk; i < k;) {
-            CnaTree T = CnaGraph::sampleCnaTree();
-            if (!restrictLoss | !T.hasLoss()) {
-                cnaTrees.push_back(T);
-                ++i;
-            }
+        for (int i = kk; i < k; ++i) {
+
+            CnaTree T;
+            bool needLoss =unif_real(g_rng) < lossProb;
+
+//
+            do
+            {
+                 T = CnaGraph::sampleCnaTree();
+
+
+            }while(T.hasAlleleLoss() != needLoss);
+//            std::cout << i << ":" << needLoss << ":" << T.hasAlleleLoss() << std::endl;
+//            std::cout << T << std::endl;
+
+            cnaTrees.push_back(T);
+
+
         }
 
         Phylogeny phylo;
@@ -117,6 +136,7 @@ int main(int argc, char **argv) {
         phylo.sampleProportions(m, expPurity, minProp, nclones);
 
         std::cerr << "Finished sampling proportions";
+
 
         std::cerr << "Removing unsampled nodes..." << std::endl;
         if (removeUnsampledNodes) {

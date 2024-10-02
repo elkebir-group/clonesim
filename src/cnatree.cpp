@@ -304,6 +304,9 @@ void CnaTree::enumerateGenotypeTrees(GenotypeTree::GenotypeEdgeSetSet& result) c
   }
 }
 
+
+
+
 bool CnaTree::next(BoolVector& boolVector)
 {
   // rightmost 0
@@ -327,6 +330,7 @@ bool CnaTree::next(BoolVector& boolVector)
 
   return true;
 }
+
 
 void CnaTree::fixPreMutation(Node u, Node mutationNode, GenotypeTree::GenotypeEdgeSet& tree) const
 {

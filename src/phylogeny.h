@@ -96,7 +96,9 @@ private:
 
   void initD(Node v);
 
-  void preorderTraversal(const Node& node, NodeVector preorder);
+  bool isAncestor(const Node& ancestor, const Node& descendant);
+
+  void preorderTraversal(const Node& node, NodeVector& preorder);
 
   Node getParent(const Node& node);
 

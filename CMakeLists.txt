@@ -235,32 +235,32 @@ target_link_libraries( generatesinglecells ${CommonLibs})
 
 
 
-add_executable( pharming ${pharming_src} ${pharming_hdr}
-        src/pharmingmain.cpp)
-target_link_libraries( pharming ${CommonLibs})
+#add_executable( pharming ${pharming_src} ${pharming_hdr}
+#        src/pharmingmain.cpp)
+#target_link_libraries( pharming ${CommonLibs})
 
 # Install the target to the appropriate locations within the Conda environment
 #
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-get_filename_component(PYTHON_PREFIX "${PYTHON_EXECUTABLE}" DIRECTORY)
-
-message(STATUS "Python interpreter: ${PYTHON_EXECUTABLE}")
-message(STATUS "Python3_VERSION_MAJOR: ${Python3_VERSION_MAJOR}")
-message(STATUS "Python3_VERSION_MINOR: ${Python3_VERSION_MINOR}")
-message(STATUS "Python prefix: ${PYTHON_PREFIX}")
-
-find_package(pybind11 REQUIRED)
-pybind11_add_module(clonelib ${clonelib_hdr} ${clonelib_src} ${clonelib_py})
-
-
+#find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+#get_filename_component(PYTHON_PREFIX "${PYTHON_EXECUTABLE}" DIRECTORY)
+#
+#message(STATUS "Python interpreter: ${PYTHON_EXECUTABLE}")
+#message(STATUS "Python3_VERSION_MAJOR: ${Python3_VERSION_MAJOR}")
+#message(STATUS "Python3_VERSION_MINOR: ${Python3_VERSION_MINOR}")
+#message(STATUS "Python prefix: ${PYTHON_PREFIX}")
+#
+#find_package(pybind11 REQUIRED)
+#pybind11_add_module(clonelib ${clonelib_hdr} ${clonelib_src} ${clonelib_py})
 
 
 
-install(TARGETS clonelib
-        COMPONENT python
-        LIBRARY DESTINATION "${PYTHON_PREFIX}/../lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages"
-        ARCHIVE DESTINATION "${PYTHON_PREFIX}/../lib"
-        RUNTIME DESTINATION "${PYTHON_PREFIX}")
+
+
+#install(TARGETS clonelib
+#        COMPONENT python
+#        LIBRARY DESTINATION "${PYTHON_PREFIX}/../lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages"
+#        ARCHIVE DESTINATION "${PYTHON_PREFIX}/../lib"
+#        RUNTIME DESTINATION "${PYTHON_PREFIX}")
 
 
 

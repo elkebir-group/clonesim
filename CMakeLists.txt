@@ -144,7 +144,7 @@ set ( clonelib_hdr
         src/cnagraph.h
         src/basematrix.h
         src/utils.h
-        src/clonaltree.h
+        # src/clonaltree.h
 )
 
 
@@ -155,7 +155,7 @@ set ( clonelib_src
         src/basematrix.cpp
         src/utils.cpp
         src/cnagraph.cpp
-  src/clonaltree.cpp
+  # src/clonaltree.cpp
 )
 
 
@@ -235,9 +235,9 @@ target_link_libraries( generatesinglecells ${CommonLibs})
 
 
 
-#add_executable( pharming ${pharming_src} ${pharming_hdr}
-#        src/pharmingmain.cpp)
-#target_link_libraries( pharming ${CommonLibs})
+# add_executable( pharming ${pharming_src} ${pharming_hdr}
+#         src/pharmingmain.cpp)
+# target_link_libraries( pharming ${CommonLibs})
 
 # Install the target to the appropriate locations within the Conda environment
 #

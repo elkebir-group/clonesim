@@ -109,6 +109,8 @@ public:
         y = _cnState[v_i]._y;
     }
 
+    void violateInfiniteAlleles();
+
     /// Return number of maternal copies of specified state
     ///
     /// @param i State
@@ -125,6 +127,23 @@ public:
         return _cnState[v_i]._y;
     }
 
+
+
+    /// Add a node to the CNA tree with a specified CnaGenotype
+    ///
+    /// @param parentState The state of the parent node
+    /// @param genotype The CNA genotype associated with the new node
+    /// @return The newly added node
+    void addCnaNode(int parentState, int x, int y) {
+        
+        Node child;
+        // Call the protected addNode method from BaseTree
+        addNode(parentState, child);
+
+        setCnState(_nodeToState[child],x,y);
+
+   
+    }
     /// Returns whether CNA tree is truncal
     bool truncal() const {
         return _k > 1 && lemon::countOutArcs(_T, _root) == 1;

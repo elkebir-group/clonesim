@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
     bool uniform = false;
     double threshold = 0.05;
     double lossProb = 0.05;
+    double inf_alleles_prob = 0;
     int nclones = l;
 
     lemon2::ArgParser ap(argc, argv);
@@ -120,7 +121,20 @@ int main(int argc, char **argv) {
             cnaTrees.push_back(T);
 
 
+
+
         }
+
+        for (CnaTree &T: cnaTrees) {
+      
+         
+            if (unif_real(g_rng) < inf_alleles_prob) {
+
+                // modify the tree to violate infinite alleles
+                T.violateInfiniteAlleles();
+            }
+        }
+
 
         Phylogeny phylo;
         for (const auto &T: cnaTrees) {

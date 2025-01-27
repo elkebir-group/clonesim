@@ -76,6 +76,8 @@ CnaTree::CnaTree(const IntVector& pi)
 {
 }
 
+
+
 CnaTree::CnaTree(const CnaTree& other)
    : BaseTree()
    , _cnState(_T)
@@ -94,6 +96,35 @@ CnaTree::CnaTree(const CnaTree& other)
   {
     _stateToNode[_nodeToState[v_i]] = v_i;
   }
+}
+
+
+/// apply a random violation of the infinite alleles assumption
+/// to the CnaTree
+/// randomly samples a CN state that is not the root and duplicates
+/// this state as a new child of the root. 
+/// (root_x,root_y) -> (root_x,root_y) is not allowed
+/// (1,1) -> (1,2) becomes (1,1) -> (1,2); (1,1) -> (1,2)
+void CnaTree::violateInfiniteAlleles()
+{
+  int parent = _nodeToState[_root];
+  std::vector<std::pair<int, int>> states;
+  for (int i = 0; i < _k; ++i) {
+            Node v_i = node(i);
+            if(v_i != _root){
+                int x_i = _cnState[v_i]._x;
+                int y_i = _cnState[v_i]._y;
+                states.push_back(std::make_pair(x_i, y_i));
+            }   
+  }
+  std::shuffle(states.begin(), states.end(), g_rng);
+  
+    if (!states.empty()) {
+        const std::pair<int, int>& state = states.front();
+        addCnaNode(parent, state.first, state.second);
+    }
+
+ 
 }
 
 bool operator<(const CnaTree::CnaGenotype& lhs, const CnaTree::CnaGenotype& rhs)

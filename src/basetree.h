@@ -352,6 +352,13 @@ protected:
   ///
   /// @param pi Vector of parental states
   void init(const IntVector& pi);
+
+  /// Update a state tree by adding a child node to a given parent state
+  ///
+  /// @param parent Parent state
+  /// @param childNode Child Node to be added
+  void addNode(int parent, Node& childNode);
+  
 };
 
 #endif //BASETREE_H

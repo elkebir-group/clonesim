@@ -109,6 +109,8 @@ public:
         y = _cnState[v_i]._y;
     }
 
+    void violateInfiniteAlleles();
+
     /// Return number of maternal copies of specified state
     ///
     /// @param i State
@@ -125,11 +127,50 @@ public:
         return _cnState[v_i]._y;
     }
 
+
+
+    /// Add a node to the CNA tree with a specified CnaGenotype
+    ///
+    /// @param parentState The state of the parent node
+    /// @param genotype The CNA genotype associated with the new node
+    /// @return The newly added node
+    void addCnaNode(int parentState, int x, int y) {
+        
+        Node child;
+        // Call the protected addNode method from BaseTree
+        addNode(parentState, child);
+
+        setCnState(_nodeToState[child],x,y);
+
+   
+    }
     /// Returns whether CNA tree is truncal
     bool truncal() const {
         return _k > 1 && lemon::countOutArcs(_T, _root) == 1;
     }
 
+    bool hasAlleleLoss() const {
+        return hasAlleleLoss_helper(_root);
+    }
+
+    bool hasAlleleLoss_helper(Node source) const {
+        for (OutArcIt a(_T, source); a != lemon::INVALID; ++a) {
+            Node target = _T.target(a);
+            int x_source = _cnState[source]._x;
+            int y_source = _cnState[source]._y;
+            int x_target = _cnState[target]._x;
+            int y_target = _cnState[target]._y;
+            if ((x_target == 0 || y_target ==0) && (x_source >0 && y_source >0)) {
+                return true;
+            } else {
+                bool childLoss = hasLoss_helper(target);
+                if (childLoss) {
+                    return true;
+                }
+            }
+        }
+        return false; //if we have arrived this far with no loss
+    }
     bool hasLoss() const {
         return hasLoss_helper(_root);
     }

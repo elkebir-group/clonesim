@@ -45,7 +45,7 @@ public:
   /// \param nrSamples Number of samples
   /// \param expPurity Expected purity
   /// \param minProportion Minimum proportion
-  void sampleProportions(int nrSamples, double expPurity, double minProportion);
+  void sampleProportions(int nrSamples, double expPurity, double minProportion, int nclones);
 
 
   int getNrSegments() const
@@ -95,6 +95,12 @@ private:
                          std::ostream& out) const;
 
   void initD(Node v);
+
+  bool isAncestor(const Node& ancestor, const Node& descendant);
+
+  void preorderTraversal(const Node& node, NodeVector& preorder);
+
+  Node getParent(const Node& node);
 
   //void initClusterD(Node v, int clusterIdx);
   void initClusterD();

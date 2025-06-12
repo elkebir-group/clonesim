@@ -11,6 +11,7 @@
 #include "phylogeny.h"
 #include <fstream>
 #include <string>
+ #include <boost/random.hpp>
 
 int main(int argc, char **argv) {
     int n = 1000;
@@ -32,6 +33,9 @@ int main(int argc, char **argv) {
     bool removeUnsampledNodes = false;
     bool uniform = false;
     double threshold = 0.05;
+    double lossProb = 0.05;
+    double inf_alleles_prob = 0;
+    int nclones = l;
 
     lemon2::ArgParser ap(argc, argv);
     ap.refOption("S", "Input CNA tree file", inputStateTreeFilename, true)
@@ -47,10 +51,12 @@ int main(int argc, char **argv) {
             .refOption("l", "Number of mutation clusters (default: 5)", l, false)
             .refOption("dot", "Graphviz DOT output filename (default: '', no output)", dotFilename, false)
             .refOption("r", "Remove unsampled nodes", removeUnsampledNodes, false)
+            .refOption("c", "Number of sampled clones", nclones, false)
             .refOption("f", "Whether to output files", _f, false)
             .refOption("output_file_dir", "The directory for where to write output files", _output_file_dir, false)
             .refOption("num_tries", "The number of tries for sampling mutation rejection sampling (default 1000)", num_tries, false)
             .refOption("restrictLoss", "Whether to restrict copy number loss (default false)", restrictLoss, false)
+            .refOption("lossProb", "Whether to restrict copy number loss (default false)", lossProb, false)
             .refOption("uniform", "use uniform distribution for mutation assignments", uniform, false);
             //.refOption("dirichletParam", "The parameter for the dirichlet (default 1)", dirich_param, false)
 
@@ -59,6 +65,7 @@ int main(int argc, char **argv) {
     ap.parse();
 
     g_rng.seed(seed);
+    boost::random::uniform_real_distribution<> unif_real(0.0, 1.0);
 
     if (!inputStateTreeFilename.empty()) {
         std::ifstream inS(inputStateTreeFilename.c_str());
@@ -86,37 +93,64 @@ int main(int argc, char **argv) {
     try {
         std::list<CnaTree> cnaTrees;
         for (int i = 0; i < kk;) {
+
             CnaTree T = CnaGraph::sampleCnaTree();
+
             if (T.truncal() && (!restrictLoss | !T.hasLoss())) {
+
                 cnaTrees.push_back(T);
                 ++i;
             }
         }
 
-        for (int i = kk; i < k;) {
-            CnaTree T = CnaGraph::sampleCnaTree();
-            if (!restrictLoss | !T.hasLoss()) {
-                cnaTrees.push_back(T);
-                ++i;
+        for (int i = kk; i < k; ++i) {
+
+            CnaTree T;
+            bool needLoss =unif_real(g_rng) < lossProb;
+
+//
+            do
+            {
+                 T = CnaGraph::sampleCnaTree();
+
+
+            }while(T.hasAlleleLoss() != needLoss);
+//            std::cout << i << ":" << needLoss << ":" << T.hasAlleleLoss() << std::endl;
+//            std::cout << T << std::endl;
+
+            cnaTrees.push_back(T);
+
+
+
+
+        }
+
+        for (CnaTree &T: cnaTrees) {
+      
+         
+            if (unif_real(g_rng) < inf_alleles_prob) {
+
+                // modify the tree to violate infinite alleles
+                T.violateInfiniteAlleles();
             }
         }
+
 
         Phylogeny phylo;
         for (const auto &T: cnaTrees) {
             phylo.addSegment(T, T.truncal());
         }
         phylo.createIndex();
-        //std::ofstream outTree("/Users/annahart/CLionProjects/clonesim/build/test/tree.txt");
-        //phylo.writeTree(outTree);
 
         phylo.sampleMutations(n, l, num_tries, dirich_param, uniform, threshold);
 
 
         std::cerr << "Clonal tree constructed, sampling proportions..." << std::endl;
 
-        phylo.sampleProportions(m, expPurity, minProp);
+        phylo.sampleProportions(m, expPurity, minProp, nclones);
 
         std::cerr << "Finished sampling proportions";
+
 
         std::cerr << "Removing unsampled nodes..." << std::endl;
         if (removeUnsampledNodes) {

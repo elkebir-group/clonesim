@@ -385,6 +385,18 @@ void Phylogeny::writeTree(std::string &treefn) const {
 
 }
 
+
+void Phylogeny::preorderTraversal(const Node& node, NodeVector& preorder) {
+    // Process the current node
+    preorder.push_back(node);
+
+    // Recursively visit all children (outgoing arcs)
+    for (Digraph::OutArcIt arc(_T, node); arc != lemon::INVALID; ++arc) {
+        Node child = _T.target(arc); // Get the child node
+        preorderTraversal(child, preorder); // Visit the child
+    }
+}
+
 void Phylogeny::writeNodeFile(std::ostream &out, std::string &outputNodeFilename) const {
     Digraph::NodeMap<int> nodeToIndex_updated(_T);
     int idx = 0;
@@ -760,41 +772,328 @@ void Phylogeny::writeProportionFile(std::ostream &out, std::string &outputPropor
 }
 
 
-void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minProportion) {
+bool Phylogeny::isAncestor(const Node& ancestor, const Node& descendant)
+{
+    Node current = descendant;
+    while (current != lemon::INVALID)
+    {
+        if (current == ancestor)
+            return true;
+        current = getParent(current);
+    }
+    return false;
+}
 
+Node Phylogeny::getParent(const Node& node) {
+    // Iterate over incoming arcs of the node (there should be only one in a tree)
+    for (Digraph::InArcIt arc(_T, node); arc != lemon::INVALID; ++arc) {
+
+        return _T.source(arc);
+    }
+    // If no incoming arc is found, this node is likely the root
+    return lemon::INVALID;  // Return INVALID if the node has no parent (it might be the root)
+}
+
+
+
+void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minProportion, int nclones)
+{
 
     const int nrClusters = _clusterToNode.size();
+
+    if (nclones < nrClusters)
+    {
+        std::cerr << "Warning requested number of clones is less than number of SNV clusters." << std::endl;
+        nclones = nrClusters;
+
+    }
+
+
+    //the set of nodes starting with where the cluster is introduced to parent of
+    //where it is lost
+    NodeNodeSetMap lossPred(_T);
+
+    //the set of nodes starting from the node a mutation in the cluster is lost
+    //to the set of all descendant
+    NodeSetVector lossNodes(nrClusters);
+
+    std::set<NodePair> lossPairs;
+
+
+
+    //for each lost SNV, find the gained node and the lost node
+
+    for(int clusterIdx=0; clusterIdx < nrClusters; clusterIdx++)
+    {
+        Node gain = _clusterToNode[clusterIdx];
+        NodeVector preord;
+        preorderTraversal(gain, preord);
+        for(Node u: preord)
+        {
+
+
+            Node par = getParent(u);
+            if (par != lemon::INVALID)
+            {
+
+                for (int mutIdx: _clusterToMut[clusterIdx])
+                {
+
+
+
+                        int totalPar = _xbar[par][mutIdx] + _ybar[par][mutIdx];
+                        int totalChild = _xbar[u][mutIdx] + _ybar[u][mutIdx];
+                        if (totalPar > 0 && totalChild == 0)
+                        {
+
+                            if (gain != u && isAncestor(gain, u))
+                            {
+                                NodePair np = std::make_pair(gain, u);
+                                lossPairs.insert(np);
+                            }else{
+                                std::cout <<"Node loss node is not descendant of gain node" << std::endl;
+                            }
+
+                        }
+
+
+
+                }
+            }
+        }
+    }
+
+    //now for each node pair find the nodes where the SNV is present
+    // and the nodes where the SNV is lost
+
+
+
+    //for each loss node, find the set of nodes from cluster introduction to parent of loss
+    NodeNodeSetMap lossMutPres(_T);
+    NodeNodeSetMap lossMutLost(_T);
+    std::pair<NodeSet, NodeSet> setPairs;
+
+    std::map<NodePair, std::pair<NodeSet, NodeSet>> sampleRequirements;
+    //for each loss node, find the set of descendant
+    for (const NodePair lp: lossPairs)
+    {
+        Node gain = lp.first;
+        Node loss = lp.second;
+        NodeVector lossPreorder;
+        preorderTraversal(loss, lossPreorder);
+        NodeSet lossNodeSet(lossPreorder.begin(), lossPreorder.end());
+
+        NodeSet gainNodes;
+        Node currentNode = loss;
+
+        // Traverse upwards from lossNode to gainNode
+        while (currentNode != gain) {
+            if(currentNode != loss){
+                gainNodes.insert(currentNode);  // Add current node to the set
+            }
+
+
+            // Find the source of the incoming arc, i.e., the parent node
+            Digraph::InArcIt arc(_T, currentNode);
+            if (arc == lemon::INVALID) {
+                throw std::runtime_error("Invalid path: No incoming arc found, gain node not reachable.");
+            }
+
+            currentNode = _T.source(arc);  // Move to the parent node
+        }
+
+        // Add the gain node to the set
+        gainNodes.insert(gain);
+
+
+//        NodeVector gainPreorder;
+//        preorderTraversal(gain, gainPreorder);
+//
+//        NodeSet nodeDifference;
+
+
+//        NodeSet gainNodeSet(gainPreorder.begin(), gainPreorder.end());
+
+
+//
+//        // Compute the set difference (nodeSet1 - nodeSet2)
+//        std::set_difference(gainNodeSet.begin(), gainNodeSet.end(),
+//                            lossNodeSet.begin(), lossNodeSet.end(),
+//                            std::inserter(nodeDifference, nodeDifference.begin()));
+
+        if(gainNodes.size() ==0 || lossNodeSet.size()==0){
+            throw std::runtime_error("invalid sampling constraints");
+        }
+        sampleRequirements[lp] = std::make_pair(gainNodes, lossNodeSet);
+
+
+
+
+    }
+
+
+
+
+
 
     // make sure to sample mrca and descendants of every cluster
     DoubleVector purityVector(nrSamples);
 
 
-    for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx) {
+    for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx)
+    {
         double samplePurity = expPurity;
-        if (expPurity < 1.) {
+        if (expPurity < 1.)
+        {
             double alpha = expPurity * 100;
             double beta = 100 - alpha;
             sftrabbit::beta_distribution<> betaDist(alpha, beta);
 
+            //resample the purity of each sample from a beta distribution
             purityVector[sampleIdx] = betaDist(g_rng);
-        } else { //added AH
+        } else
+        { //added AH
             purityVector[sampleIdx] = 1.;
         }
     }
 
     int countNodes = 0;
+    NodeVector allNodes;
     // initialize proportions
-    for (NodeIt v(_T); v != lemon::INVALID; ++v) {
+    for (NodeIt v(_T); v != lemon::INVALID; ++v)
+    {
         countNodes++;
+
         _proportions[v] = DoubleVector(nrSamples, 0.);
-        if (v == _root) {
-            for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx) {
+
+        //normal cell proportion at root is 1-purity for each sample
+        if (v == _root)
+        {
+            for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx)
+            {
                 _proportions[v][sampleIdx] = 1. - purityVector[sampleIdx];
+            }
+        } else
+        {
+            if (!_trunk[v])
+            {
+                allNodes.push_back(v);
             }
         }
     }
 
-    IntMatrix clusterToSample(nrClusters);
+    //draw the set of clones that will be sampled for all samples
+
+    NodeVector sampledNodes;
+    bool foundValidSample = false;
+    while (!foundValidSample)
+    {
+
+
+
+        int tcount = 0;
+        do
+        {
+            NodeSet testNodes;
+            tcount++;
+            foundValidSample = false;
+
+            // Initialize testNodes with one node from each cluster
+
+            bool allClusters = true;
+//            std::cout <<"Attempt " << tcount << " nclones: " << nclones << std::endl;
+            for (int clusterIdx = 0; clusterIdx < nrClusters; ++clusterIdx)
+            {
+                NodeVector descVec = _clusterD[clusterIdx];
+                if (!descVec.empty())
+                {
+                    std::shuffle(descVec.begin(), descVec.end(), g_rng);
+                    testNodes.insert(descVec.front());
+                } else
+                {
+                    std::cerr << "Cluster " << clusterIdx << " has no descendants." << std::endl;
+                    allClusters = false;
+                    break;
+                }
+            }
+
+//            if (!allClusters)
+//            {
+//                throw std::runtime_error("A cluster does not have any descendants");
+//            }
+
+            // Add additional nodes if needed
+            if (testNodes.size() < nclones)
+            {
+                NodeVector remainingNodes = allNodes;
+                for (Node n: testNodes)
+                {
+                    remainingNodes.erase(std::remove(remainingNodes.begin(), remainingNodes.end(), n),
+                                         remainingNodes.end());
+                }
+                std::shuffle(remainingNodes.begin(), remainingNodes.end(), g_rng);
+                int nodesNeeded = nclones - testNodes.size();
+                for (int i = 0; i < nodesNeeded && i < remainingNodes.size(); ++i)
+                {
+                    testNodes.insert(remainingNodes[i]);
+                }
+            }
+            // Check loss requirements
+            bool lossreq = true;
+            for (const auto &entry: sampleRequirements)
+            {
+                const NodeSet &gainSet = entry.second.first;
+                const NodeSet &lossSet = entry.second.second;
+
+                NodeSet intersectionGain;
+                std::set_intersection(gainSet.begin(), gainSet.end(),
+                                      testNodes.begin(), testNodes.end(),
+                                      std::inserter(intersectionGain, intersectionGain.begin()));
+
+                NodeSet intersectionLoss;
+                std::set_intersection(lossSet.begin(), lossSet.end(),
+                                      testNodes.begin(), testNodes.end(),
+                                      std::inserter(intersectionLoss, intersectionLoss.begin()));
+
+                if (intersectionGain.empty() || intersectionLoss.empty())
+                {
+                    lossreq = false;
+//                    std::cerr << "Loss requirement not met for a lossPair." << std::endl;
+                    break;
+                }
+            }
+
+            if (lossreq)
+            {
+                sampledNodes.assign(testNodes.begin(), testNodes.end());
+                foundValidSample = true;
+            }
+
+//            std::cout << "FoundValidSample: " << foundValidSample << std::endl;
+        } while (tcount < 1000000 && !foundValidSample);
+
+
+        if (!foundValidSample && nclones < allNodes.size())
+        {
+            nclones++;
+
+        } else if(nclones >= allNodes.size())
+        {
+            throw std::runtime_error("Unable to find a valid sample after maximum attempts.");
+        }else{
+            break;
+        }
+
+
+    }
+
+
+
+
+
+    boost::random::gamma_distribution<> gamma_dist(1, 1);
+    std::map<Node, std::vector<int>> cloneToSample;
+
     IntVector sampleVector(nrSamples);
     for (int i = 0; i < nrSamples; ++i) {
         sampleVector[i] = i;
@@ -802,47 +1101,39 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
 
     boost::random::uniform_int_distribution<> unif_samples(1, nrSamples);
 
-    IntMatrix sampleToCluster(nrSamples);
-    for (int clusterIdx = 0; clusterIdx < nrClusters; ++clusterIdx) {
+    std::vector<NodeVector> sampleToClone(nrSamples);
+//    NodeVector sampleToClone(nrSamples);
+
+    for (const Node& clone: sampledNodes) {
         std::shuffle(sampleVector.begin(), sampleVector.end(), g_rng);
         int nr_picked_samples = unif_samples(g_rng);
 
-        clusterToSample[clusterIdx] = IntVector(sampleVector.begin(), sampleVector.begin() + nr_picked_samples);
-        for (int sample: clusterToSample[clusterIdx]) {
-            sampleToCluster[sample].push_back(clusterIdx);
+        cloneToSample[clone] = IntVector(sampleVector.begin(), sampleVector.begin() + nr_picked_samples);
+        for (int sample: cloneToSample[clone]) {
+            sampleToClone[sample].push_back(clone);
         }
     }
 
-    boost::random::gamma_distribution<> gamma_dist(1, 1);
+
     for (int sampleIdx = 0; sampleIdx < nrSamples; ++sampleIdx) {
         double minSampleProportion = std::min(minProportion,
-                                              purityVector[sampleIdx] / sampleToCluster[sampleIdx].size());
-
-        NodeSet sampledNodes;
-        for (int cloneIdx = 0; cloneIdx < sampleToCluster[sampleIdx].size(); ++cloneIdx) {
-            if (_clusterD[cloneIdx].size() > 0) {
-                boost::random::uniform_int_distribution<> unif_cluster(0, _clusterD[cloneIdx].size() - 1);
-                Node v = _clusterD[cloneIdx][unif_cluster(g_rng)];
-                sampledNodes.insert(v);
-            }
-        }
-        for (Node v: sampledNodes) {
-            int a = _nodeToIndex[v];
-        }
-        DoubleVector gamma(sampledNodes.size());
+                                              purityVector[sampleIdx] /nclones);
+//        NodeVector sampledClones = sampleToClone[sampleIdx];
+        int nclonesPerSample = sampleToClone[sampleIdx].size();
+        //draw the proportions from a Dirichlet
+        DoubleVector gamma(nclonesPerSample);
 
         bool ok = false;
         double sum;
         while (!ok) {
             ok = true;
             sum = 0;
-            for (int nodeIdx = 0; nodeIdx < sampledNodes.size(); nodeIdx++) {
+            for (int nodeIdx = 0; nodeIdx < nclonesPerSample; nodeIdx++) {
                 gamma[nodeIdx] = gamma_dist(g_rng);
                 sum += gamma[nodeIdx];
             }
 
-
-            for (int nodeIdx = 0; nodeIdx < sampledNodes.size(); nodeIdx++) {
+            for (int nodeIdx = 0; nodeIdx < nclonesPerSample; nodeIdx++) {
                 double prop = gamma[nodeIdx] / sum * purityVector[sampleIdx];
                 if (prop < minSampleProportion) ok = false;
             }
@@ -850,7 +1141,7 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
         }
 
         int nodeIdx = 0;
-        for (Node n: sampledNodes) {
+        for (Node n: sampleToClone[sampleIdx]) {
             double prop = gamma[nodeIdx] / sum * purityVector[sampleIdx];
             _proportions[n][sampleIdx] = prop;
             nodeIdx++;
@@ -1126,36 +1417,30 @@ std::istream &operator>>(std::istream &in, Phylogeny &T) {
 
 Phylogeny Phylogeny::removeUnsampledNodes() const {
     Phylogeny newPhylo(*this);
-    for (ArcIt a(newPhylo._T); a != lemon::INVALID; ++a) {
-        Node par = newPhylo._T.source(a);
-        int parent = newPhylo._nodeToIndex[par];
-        Node ch = newPhylo._T.target(a);
-        int child = newPhylo._nodeToIndex[ch];
-    }
-    for (NodeIt v(newPhylo._T); v != lemon::INVALID; ++v) {
-        int b = newPhylo._nodeToIndex[v];
-    }
 
+    // Boolean map to keep track of sampled nodes
     BoolNodeMap sampled(newPhylo._T, false);
     NodeSet unsampledNodes;
+
+    // Determine which nodes are sampled and which are unsampled
     for (NodeIt v(newPhylo._T); v != lemon::INVALID; ++v) {
         bool sampled_v = false;
-        for (double prop: newPhylo._proportions[v]) {
+        for (double prop : newPhylo._proportions[v]) {
             sampled_v |= prop > 0.;
         }
         sampled[v] = sampled_v;
         if (!sampled_v) {
             unsampledNodes.insert(v);
         }
-        if (sampled_v) {
-            int b = 5;
-        }
     }
 
+    // Remove unsampled nodes with 0 or 1 descendants
     while (true) {
         Node toRemove = lemon::INVALID;
         int outDeg = -1;
-        for (Node v: unsampledNodes) {
+
+        // Find a node in unsampledNodes with out-degree <= 1
+        for (Node v : unsampledNodes) {
             outDeg = lemon::countOutArcs(newPhylo._T, v);
             if (outDeg <= 1) {
                 toRemove = v;
@@ -1164,9 +1449,10 @@ Phylogeny Phylogeny::removeUnsampledNodes() const {
         }
 
         if (toRemove == lemon::INVALID) break;
-        //assert(toRemove != newPhylo._root); //AH 10/11
+
         Node child = lemon::INVALID;
         if (toRemove == newPhylo._root) {
+            // Special case: removing the root node
             if (outDeg != 1) {
                 throw std::runtime_error("Error: out degree of root being removed is not 1");
             }
@@ -1175,41 +1461,165 @@ Phylogeny Phylogeny::removeUnsampledNodes() const {
             newPhylo._trunkLength--;
         } else {
             Node parent = newPhylo._T.source(InArcIt(newPhylo._T, toRemove));
+
+            // If out-degree is 1, we can reconnect the parent and child
             if (outDeg == 1) {
                 child = newPhylo._T.target(OutArcIt(newPhylo._T, toRemove));
                 newPhylo._T.addArc(parent, child);
             }
+
+            // Decrease the trunk length if necessary
             if (newPhylo._trunk[toRemove]) {
                 newPhylo._trunkLength--;
             }
+
+            // Update the MRCA if we're removing it
             if (toRemove == newPhylo._mrca) {
                 if (outDeg != 1) {
-                    throw std::runtime_error("Error: out degree of mrca being removed is not 1");
+                    throw std::runtime_error("Error: out degree of MRCA being removed is not 1");
                 }
                 newPhylo._mrca = child;
             }
         }
-        //updating nodeToCluster and clusterToNode assignments for newPhylo
+
+        // Update node-to-cluster and cluster-to-node mappings, if needed
         int assignedCluster = newPhylo._nodeToCluster[toRemove];
         if (assignedCluster != -1) {
-            newPhylo._nodeToCluster[child] = assignedCluster;
-            newPhylo._clusterToNode[assignedCluster] = child;
+            if (child != lemon::INVALID && newPhylo._T.valid(child)) {
+                newPhylo._nodeToCluster[child] = assignedCluster;
+            } else if (outDeg == 0) {
+                // No child exists if outDeg == 0, so skip cluster assignment
+                std::cout << "AssignedCluster: " << assignedCluster << std::endl;
+                std::cout << "Leaf node being removed, no child to assign cluster." << std::endl;
+            }
+
+            if (assignedCluster >= 0 && assignedCluster < newPhylo._clusterToNode.size()) {
+                newPhylo._clusterToNode[assignedCluster] = child;
+            } else {
+                throw std::out_of_range("Assigned cluster is out of bounds");
+            }
         }
+
+        // Erase the node to remove and update the unsampled node set
         unsampledNodes.erase(toRemove);
-        newPhylo._T.erase(toRemove);
+        if (newPhylo._T.valid(toRemove)) {
+            newPhylo._T.erase(toRemove);
+        } else {
+            throw std::runtime_error("Node toRemove is not valid");
+        }
     }
 
+    // Reinitialize distances and clusters after removing nodes
     newPhylo.initD(newPhylo._root);
     newPhylo._clusterD = NodeMatrix(newPhylo._clusterToNode.size(), NodeVector(0));
-    //newPhylo.initClusterD(newPhylo._mrca, 0);
     newPhylo.initClusterD();
-    for (ArcIt a(newPhylo._T); a != lemon::INVALID; ++a) {
-        Node par = newPhylo._T.source(a);
-        int parent = newPhylo._nodeToIndex[par];
-        Node ch = newPhylo._T.target(a);
-        int child = newPhylo._nodeToIndex[ch];
-    }
 
-
+    // Return the modified phylogeny
     return newPhylo;
 }
+
+//Phylogeny Phylogeny::removeUnsampledNodes() const {
+//    Phylogeny newPhylo(*this);
+////    for (ArcIt a(newPhylo._T); a != lemon::INVALID; ++a) {
+////        Node par = newPhylo._T.source(a);
+////        int parent = newPhylo._nodeToIndex[par];
+////        Node ch = newPhylo._T.target(a);
+////        int child = newPhylo._nodeToIndex[ch];
+////    }
+////    for (NodeIt v(newPhylo._T); v != lemon::INVALID; ++v) {
+////        int b = newPhylo._nodeToIndex[v];
+////    }
+//
+//    BoolNodeMap sampled(newPhylo._T, false);
+//    NodeSet unsampledNodes;
+//    for (NodeIt v(newPhylo._T); v != lemon::INVALID; ++v) {
+//        bool sampled_v = false;
+//        for (double prop: newPhylo._proportions[v]) {
+//            sampled_v |= prop > 0.;
+//        }
+//        sampled[v] = sampled_v;
+//        if (!sampled_v) {
+//            unsampledNodes.insert(v);
+//        }
+////        if (sampled_v) {
+////            int b = 5;
+////        }
+//    }
+//
+//    while (true) {
+//        Node toRemove = lemon::INVALID;
+//        int outDeg = -1;
+//        for (Node v: unsampledNodes) {
+//            outDeg = lemon::countOutArcs(newPhylo._T, v);
+//            if (outDeg <= 1) {
+//                toRemove = v;
+//                break;
+//            }
+//        }
+//
+//        if (toRemove == lemon::INVALID) break;
+//        //assert(toRemove != newPhylo._root); //AH 10/11
+//        Node child = lemon::INVALID;
+//        if (toRemove == newPhylo._root) {
+//            if (outDeg != 1) {
+//                throw std::runtime_error("Error: out degree of root being removed is not 1");
+//            }
+//            child = newPhylo._T.target(OutArcIt(newPhylo._T, toRemove));
+//            newPhylo._root = child;
+//            newPhylo._trunkLength--;
+//        } else {
+//            Node parent = newPhylo._T.source(InArcIt(newPhylo._T, toRemove));
+//            if (outDeg == 1) {
+//                child = newPhylo._T.target(OutArcIt(newPhylo._T, toRemove));
+//                newPhylo._T.addArc(parent, child);
+//            }
+//            if (newPhylo._trunk[toRemove]) {
+//                newPhylo._trunkLength--;
+//            }
+//            if (toRemove == newPhylo._mrca) {
+//                if (outDeg != 1) {
+//                    throw std::runtime_error("Error: out degree of mrca being removed is not 1");
+//                }
+//                newPhylo._mrca = child;
+//            }
+//        }
+//        //updating nodeToCluster and clusterToNode assignments for newPhylo
+//        int assignedCluster = newPhylo._nodeToCluster[toRemove];
+//        if (assignedCluster != -1) {
+//            if (newPhylo._T.valid(child)) {
+//                newPhylo._nodeToCluster[child] = assignedCluster;
+//
+//            }else{
+//                throw std::out_of_range("Assigned cluster is out of bounds");
+//            }
+//
+////            newPhylo._nodeToCluster[child] = assignedCluster;
+//            if (assignedCluster >= 0 && assignedCluster < newPhylo._clusterToNode.size()) {
+//                newPhylo._clusterToNode[assignedCluster] = child;
+//            } else {
+//                throw std::out_of_range("Assigned cluster is out of bounds");
+//            }
+////            newPhylo._clusterToNode[assignedCluster] = child;
+//        }
+//        unsampledNodes.erase(toRemove);
+//        if (newPhylo._T.valid(toRemove)) {
+//            newPhylo._T.erase(toRemove);
+//        } else {
+//            throw std::runtime_error("Node toRemove is not valid");
+//        }
+//    }
+//
+//    newPhylo.initD(newPhylo._root);
+//    newPhylo._clusterD = NodeMatrix(newPhylo._clusterToNode.size(), NodeVector(0));
+//    //newPhylo.initClusterD(newPhylo._mrca, 0);
+//    newPhylo.initClusterD();
+//    for (ArcIt a(newPhylo._T); a != lemon::INVALID; ++a) {
+//        Node par = newPhylo._T.source(a);
+//        int parent = newPhylo._nodeToIndex[par];
+//        Node ch = newPhylo._T.target(a);
+//        int child = newPhylo._nodeToIndex[ch];
+//    }
+//
+//
+//    return newPhylo;
+//}

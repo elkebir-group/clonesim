@@ -200,3 +200,35 @@ void BaseTree::initD(Node v_i)
     D_i.insert(_D[v_j].begin(), _D[v_j].end());
   }
 }
+
+
+void BaseTree::addNode(int parentState, Node &childNode) {
+    // Ensure the parent state exists in the tree
+    assert(0 <= parentState && parentState < _k);
+    Node parentNode = _stateToNode[parentState];
+    assert(parentNode != lemon::INVALID);
+
+    // Determine the new child state
+    int childState = _k;
+    _stateToNode.resize(childState + 1, lemon::INVALID);
+
+    // Create a new node for the child state
+    childNode = _T.addNode();
+    _stateToNode[childState] = childNode;
+    _nodeToState[childNode] = childState;
+
+    // Assign a default label to the new node
+    char buf[1024];
+    snprintf(buf, 1024, "%d", childState);
+    _label[childNode] = buf;
+
+    // Add the arc from parent to child
+    _T.addArc(parentNode, childNode);
+
+    // Increment the number of states
+    _k++;
+
+    // Update descendant sets
+    initD(_root);
+
+}

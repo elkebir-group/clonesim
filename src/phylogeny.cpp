@@ -457,9 +457,21 @@ std::vector<float> dirichlet(double dirchparam, int n, bool uniform, float thres
         std::vector<float> gamma_sample(n);
 
         //sample from the dirichelet distribution until all values are above the threshold
+        // n weights sum to 1, so they cannot all be at least 1/n unless they are equal
+        if (threshold * n >= 1) {
+            throw std::runtime_error("dirichlet: -threshold " + std::to_string(threshold) + " is impossible for "
+                                     + std::to_string(n) + " segments or clusters (it must be below 1/" + std::to_string(n)
+                                     + "); pass a smaller -threshold, e.g. 0.2/max(k, l)");
+        }
+        const long max_draws = 1000000;
+        long draws = 0;
         bool accept = true;
         do{
-            
+            if (++draws > max_draws) {
+                throw std::runtime_error("dirichlet: no draw with every weight >= -threshold " + std::to_string(threshold)
+                                         + " in " + std::to_string(max_draws) + " draws for " + std::to_string(n)
+                                         + " segments or clusters; pass a smaller -threshold, e.g. 0.2/max(k, l)");
+            }
             accept = true;
             float gamma_sum = 0;
             for (int i = 0; i < n; i++)
@@ -1063,6 +1075,32 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
                 }
             }
 
+            // Rejection rarely succeeds on large trees with many losses. After 1000 tries,
+            // repair the draw instead: for every loss pair, add a random node of each side
+            // (gain path, lost subtree) that has no sampled node yet. Adding nodes never breaks
+            // a requirement that is met, so one pass gives a valid sample.
+            if (!lossreq && tcount >= 1000)
+            {
+                NodeSet allowed(allNodes.begin(), allNodes.end());
+                auto pick = [&](const NodeSet &side) {
+                    for (Node n: side) if (testNodes.count(n)) return;
+                    NodeVector choices;
+                    for (Node n: side) if (allowed.count(n)) choices.push_back(n);
+                    if (choices.empty()) choices.assign(side.begin(), side.end());
+                    boost::random::uniform_int_distribution<> unif(0, choices.size() - 1);
+                    testNodes.insert(choices[unif(g_rng)]);
+                };
+                size_t before = testNodes.size();
+                for (const auto &entry: sampleRequirements)
+                {
+                    pick(entry.second.first);
+                    pick(entry.second.second);
+                }
+                lossreq = true;
+                std::cerr << "No valid sample in " << tcount << " draws; repaired the last draw by adding "
+                          << testNodes.size() - before << " clones (" << testNodes.size() << " sampled)" << std::endl;
+            }
+
             if (lossreq)
             {
                 sampledNodes.assign(testNodes.begin(), testNodes.end());
@@ -1123,9 +1161,23 @@ void Phylogeny::sampleProportions(int nrSamples, double expPurity, double minPro
         //draw the proportions from a Dirichlet
         DoubleVector gamma(nclonesPerSample);
 
+        // the proportions sum to the purity, so they cannot all be at least purity/n unless they are equal
+        if (minSampleProportion * nclonesPerSample >= purityVector[sampleIdx] * (1 - 1e-9)) {
+            throw std::runtime_error("sampleProportions: -minProp " + std::to_string(minProportion) + " is impossible for "
+                                     + std::to_string(nclonesPerSample) + " clones in sample " + std::to_string(sampleIdx)
+                                     + " with purity " + std::to_string(purityVector[sampleIdx])
+                                     + "; pass a smaller -minProp, e.g. 0.01/l");
+        }
+        const long max_draws = 1000000;
+        long draws = 0;
         bool ok = false;
         double sum;
         while (!ok) {
+            if (++draws > max_draws) {
+                throw std::runtime_error("sampleProportions: no draw with every proportion >= " + std::to_string(minSampleProportion)
+                                         + " in " + std::to_string(max_draws) + " draws for sample " + std::to_string(sampleIdx)
+                                         + "; pass a smaller -minProp, e.g. 0.01/l");
+            }
             ok = true;
             sum = 0;
             for (int nodeIdx = 0; nodeIdx < nclonesPerSample; nodeIdx++) {

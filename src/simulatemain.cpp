@@ -92,7 +92,13 @@ int main(int argc, char **argv) {
 
     try {
         std::list<CnaTree> cnaTrees;
+        const long max_draws = 1000000;
+        long draws = 0;
         for (int i = 0; i < kk;) {
+            if (++draws > max_draws) {
+                throw std::runtime_error("no truncal CNA tree" + std::string(restrictLoss ? " without loss" : "")
+                                         + " in " + std::to_string(max_draws) + " draws; check the CNA trees in -S, or lower -kk");
+            }
 
             CnaTree T = CnaGraph::sampleCnaTree();
 
@@ -109,8 +115,14 @@ int main(int argc, char **argv) {
             bool needLoss =unif_real(g_rng) < lossProb;
 
 //
+            draws = 0;
             do
             {
+                if (++draws > max_draws) {
+                    throw std::runtime_error(std::string("no CNA tree ") + (needLoss ? "with" : "without")
+                                             + " allele loss in " + std::to_string(max_draws)
+                                             + " draws; check the CNA trees in -S, or change -lossProb");
+                }
                  T = CnaGraph::sampleCnaTree();
 
 

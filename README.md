@@ -134,6 +134,28 @@ Where:
 Example run: ./generatesinglecells -num_cells 500 -read_depth 0.05 -alpha_fp 0.001 -k 50 -m 1 -e .3 -add .35 -sub .25 -out_dir /Users/annahart/CLionProjects/clonesim3/build/output/testing -in_dir /Users/annahart/CLionProjects/clonesim3/build/output/intermediate
 
 
+## Generate Bulk
+
+Generate bulk will draw bulk sequencing data for the simulation instance, from the `node.tsv` and `proportions.tsv` written by `simulate -f`.
+
+```
+Usage: ./generatebulk -in_dir str [-out_dir str] [-depth num] [-cn_noise num] [-s int]
+Where:
+    -in_dir The output directory of simulate (mandatory)
+    -out_dir The output directory for snvs.tsv and cn.tsv (default: in_dir)
+    -depth The mean total reads of an SNV on a diploid segment (default: 100)
+    -cn_noise The standard deviation of Gaussian noise on the copy-number state fractions (default: 0)
+    -s Random number generator seed (default: 0)
+```
+
+It writes two files.
+`snvs.tsv` has the columns `snv, sample, segment, variant, total`.
+In each sample, the total reads of an SNV are Poisson with mean depth times the mean copy number of its segment divided by 2, and its variant reads are binomial with the fraction of copies of the segment that carry the SNV.
+`cn.tsv` has the columns `segment, sample, x, y, fraction`, the fraction of cells of the sample in each allele-specific state (x, y) of each segment.
+With `-cn_noise`, each fraction gets Gaussian noise, and the fractions are clipped at 0 and renormalized.
+
+Example run: ./generatebulk -in_dir output/intermediate -depth 100 -s 0
+
 ## Python Interface
 With the aid of pybind11, clonelib has a python interface to certain functionality within clonelib.
 This functionality currently includes:  

@@ -137,6 +137,17 @@ set ( generatesinglecells_hdr
         src/generatesinglecellsmain.cpp
 )
 
+set ( generatebulk_src
+        src/arg_parser.cpp
+        src/utils.cpp
+        src/generatebulkmain.cpp
+)
+
+set ( generatebulk_hdr
+        src/arg_parser.h
+        src/utils.h
+)
+
 set ( clonelib_hdr
         src/cnatree.h
         src/basetree.h
@@ -232,6 +243,10 @@ add_executable( generatesinglecells ${generatesinglecells_src} ${generatesinglec
         src/generatesinglecellsmain.cpp)
 
 target_link_libraries( generatesinglecells ${CommonLibs})
+
+add_executable( generatebulk ${generatebulk_src} ${generatebulk_hdr} )
+target_link_libraries( generatebulk ${CommonLibs} )
+target_compile_features( generatebulk PRIVATE cxx_std_17 )
 
 
 

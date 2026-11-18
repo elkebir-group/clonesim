@@ -4,6 +4,11 @@
  * Reads node.tsv and proportions.tsv of a simulated instance and writes
  *   snvs.tsv  snv, sample, segment, variant, total
  *   cn.tsv    segment, sample, x, y, fraction
+ *   clusters.tsv  snv, cluster
+ *
+ * A cluster is the set of SNVs introduced on the same edge of the tree in tree.tsv. This
+ * differs from clusterIDofMutation of node.tsv when simulate -r removed a node: the SNVs
+ * of its edge then join those of its child, and the two clusters are merged.
  *
  * In sample p, the mean copy number of segment s is c = sum_v (x_v + y_v) u_v,
  * where u_v is the proportion of node v in p. The total reads of an SNV on s are
@@ -160,6 +165,42 @@ int main(int argc, char** argv) {
                     cn << s << '\t' << p << '\t' << xy.first << '\t' << xy.second << '\t' << x << '\n';
             }
         }
+        // the node below the edge where each SNV is introduced: mutated there, not in its parent
+        std::map<int, int> parent;
+        {
+            std::ifstream tin(in_dir + "/tree.tsv");
+            if (!tin) throw std::runtime_error("cannot open " + in_dir + "/tree.tsv");
+            int p, c;
+            while (tin >> p >> c) parent[c] = p;
+        }
+        std::map<int, int> introduced;  // snv -> node
+        for (const auto& [m, s] : snv_segment) {
+            for (const auto& [v, u] : prop) {
+                auto it = mutated.find({v, m});
+                if (it == mutated.end() || it->second == 0) continue;
+                auto pv = parent.find(v);
+                bool above = false;
+                if (pv != parent.end()) {
+                    auto ip = mutated.find({pv->second, m});
+                    above = ip != mutated.end() && ip->second > 0;
+                }
+                if (!above) {
+                    if (introduced.count(m)) throw std::runtime_error("SNV " + std::to_string(m) + " is introduced on two edges");
+                    introduced[m] = v;
+                }
+            }
+            if (!introduced.count(m)) throw std::runtime_error("SNV " + std::to_string(m) + " is mutated in no node");
+        }
+        std::map<int, int> cluster_of_node;  // numbered by node
+        for (const auto& [m, v] : introduced) cluster_of_node[v] = 0;
+        int next = 0;
+        for (auto& [v, c] : cluster_of_node) c = next++;
+
+        std::ofstream clusters(out_dir + "/clusters.tsv");
+        if (!clusters) throw std::runtime_error("cannot write " + out_dir + "/clusters.tsv");
+        clusters << "snv\tcluster\n";
+        for (const auto& [m, v] : introduced) clusters << m << '\t' << cluster_of_node[v] << '\n';
+
         std::cerr << "Wrote " << snv_segment.size() << " SNVs and " << fraction.size() << " segments in "
                   << nr_samples << " samples to " << out_dir << std::endl;
     }

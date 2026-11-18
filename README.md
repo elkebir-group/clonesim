@@ -148,11 +148,12 @@ Where:
     -s Random number generator seed (default: 0)
 ```
 
-It writes two files.
+It writes three files.
 `snvs.tsv` has the columns `snv, sample, segment, variant, total`.
 In each sample, the total reads of an SNV are Poisson with mean depth times the mean copy number of its segment divided by 2, and its variant reads are binomial with the fraction of copies of the segment that carry the SNV.
 `cn.tsv` has the columns `segment, sample, x, y, fraction`, the fraction of cells of the sample in each allele-specific state (x, y) of each segment.
 With `-cn_noise`, each fraction gets Gaussian noise, and the fractions are clipped at 0 and renormalized.
+`clusters.tsv` has the columns `snv, cluster`. A cluster is the set of SNVs introduced on the same edge of the tree in `tree.tsv`. It merges clusters of `node.tsv` whose edges `simulate -r` joined.
 
 Example run: ./generatebulk -in_dir output/intermediate -depth 100 -s 0
 
